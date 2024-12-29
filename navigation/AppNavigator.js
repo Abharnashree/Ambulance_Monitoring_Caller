@@ -4,7 +4,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import SplashScreen from "../screens/SplashScreen"; 
 import SignupScreen from "../screens/SignupScreen"; 
-
+import SOS from "../screens/SOS";
+import AmbTrack from "../screens/AmbTrack";
 const Stack = createNativeStackNavigator();
 
 const linking = {
@@ -13,6 +14,8 @@ const linking = {
         screens: {
             Splash: '/',
             SignUp: '/signup',
+            SOS: '/sos',
+            AmbTrack: '/ambtrack',
         },
     },
 };
@@ -23,6 +26,8 @@ const App = () => {
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           <Stack.Screen name="Splash" component={SplashScreen} />
           <Stack.Screen name="Signup" component={SignupScreen} />
+          <Stack.Screen name="SOS" component={SOS}/>
+          <Stack.Screen name="AmbTrack" component={AmbTrack}/>
         </Stack.Navigator>
       </NavigationContainer>
     );

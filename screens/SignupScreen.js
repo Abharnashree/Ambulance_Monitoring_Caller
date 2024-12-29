@@ -2,14 +2,16 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Text, TextInput, Button } from 'react-native-paper';
 
-const SignupScreen = () => {
+const SignupScreen = ({navigation}) => {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Sign Up</Text>
+      <Text style={styles.title}>Sign Up</Text> 
       <TextInput label="Name" style={styles.input} />
       <TextInput label="Phone Number" keyboardType="phone-pad" style={styles.input} />
       <TextInput label="Emergency Contact" keyboardType="phone-pad" style={styles.input} />
-      <Button mode="contained" style={styles.button}>
+      <Button mode="contained" 
+      style={styles.button}
+      onPress={() => navigation.navigate('SOS')}>
         Register
       </Button>
     </View>
