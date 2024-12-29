@@ -6,11 +6,9 @@ import axios from 'axios';
 
 const AmbTrack = ({ route }) => {
   const { location } = route.params;
-  const ambulance = { latitude: 13.020078, longitude: 80.224613, time: 5, dist:1.5, speed : 10};
+  const ambulance = { latitude: 13.020078, longitude: 80.224613, time: 5, dist: 1.5, speed: 10 };
   const [routeCoordinates, setRouteCoordinates] = useState([]);
-//   console.log(location.latitude, location.longitude)
-//   console.log(ambulance.latitude, ambulance.longitude)
-  
+
   useEffect(() => {
     const fetchRoute = async () => {
       try {
@@ -50,14 +48,13 @@ const AmbTrack = ({ route }) => {
           zIndex={0}
         />
         <Marker
-  key="ambulance-marker"
-  coordinate={{ latitude: ambulance.latitude, longitude: ambulance.longitude }}
-/>
-<Marker
-  key="location-marker"
-  coordinate={{ latitude: location.latitude, longitude: location.longitude }}
-/>
-
+          key="ambulance-marker"
+          coordinate={{ latitude: ambulance.latitude, longitude: ambulance.longitude }}
+        />
+        <Marker
+          key="location-marker"
+          coordinate={{ latitude: location.latitude, longitude: location.longitude }}
+        />
         {routeCoordinates.length > 0 && (
           <Polyline
             coordinates={routeCoordinates}
@@ -68,10 +65,10 @@ const AmbTrack = ({ route }) => {
       </MapView>
       <Card style={styles.details}>
         <Card.Content>
-        <Text variant="titleLarge">Ambulance</Text>
-        <Text variant="bodyMedium">Arrive In : {ambulance.time} mins</Text>
-        <Text variant="bodyMedium">Distance : {ambulance.dist} km</Text>      
-        <Text variant="bodyMedium">Speed : {ambulance.speed}m/s</Text>
+          <Text variant="titleLarge">Ambulance</Text>
+          <Text variant="bodyMedium">Arrive In: {ambulance.time} mins</Text>
+          <Text variant="bodyMedium">Distance: {ambulance.dist} km</Text>
+          <Text variant="bodyMedium">Speed: {ambulance.speed} m/s</Text>
         </Card.Content>
       </Card>
     </View>
@@ -81,19 +78,25 @@ const AmbTrack = ({ route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding:10,
-    paddingtop:40,
-    flexDirection: 'column',
-    
+    position: 'relative',
   },
   map: {
     flex: 1,
   },
-    details: {
-        flex:1,
-        
-    },
-
+  details: {
+    position: 'absolute',
+    bottom: 0,
+    width: '100%',
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    elevation: 5, // Adds shadow for Android
+    shadowColor: '#000', // Adds shadow for iOS
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    padding: 15,
+  },
 });
 
 export default AmbTrack;
