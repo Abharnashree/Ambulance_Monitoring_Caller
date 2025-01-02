@@ -5,7 +5,7 @@ import datetime
 
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:''@localhost/flask'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:''@localhost/flask' #if you have used any other db name, changing here alone would suffice
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
