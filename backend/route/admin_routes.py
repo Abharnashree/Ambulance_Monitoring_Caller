@@ -10,7 +10,7 @@ init ambulances - init_db_with_dummy_data
 Update ambulance - update_ambulance
 """
 
-@admin.route('add_ambulance', methods=['POST'])
+@admin.route('/add_ambulance', methods=['POST'])
 def add_ambulance():
     data = request.json
 
@@ -45,14 +45,14 @@ def init_db_with_dummy_data():
     db.session.commit() 
     return "added"
 
-@admin.route('update_ambulance/<int:ambulance_id>', methods=['PUT'])
+@admin.route('/update_ambulance/<int:ambulance_id>', methods=['PUT'])
 def update_ambulance(ambulance_id):
     ambulance = Ambulance.query.get(ambulance_id)
     
     if not ambulance:
         return jsonify({"message": "Ambulance not found!"}), 404
     data = request.json
-    ambulance_type = data.get('type')
+    ambulance_type = data.get('type')   
     is_available = data.get('isAvailable')
 
     if ambulance_type:

@@ -11,8 +11,7 @@ class Order(db.Model):
   caller_phone_no = db.Column('caller_phone_no', db.String(10), db.ForeignKey('caller.phone_no'))
   date_time = db.Column(db.DateTime, default=datetime.datetime.now())
 
-  def __init__(self, order_id, ambulance, caller, date_time=datetime.datetime.now()):
-    self.order_id = order_id
+  def __init__(self, ambulance, caller, date_time=datetime.datetime.now()):
     self.ambulance = ambulance
     self.caller = caller
     self.date_time = date_time
@@ -33,6 +32,7 @@ class Ambulance(db.Model):
   def __init__(self, id, type):
     self.id = id
     self.type = type  
+    self.isAvailable = True
 
 class Caller(db.Model):
   phone_no = db.Column(db.String(10), primary_key=True)
