@@ -37,6 +37,10 @@ venv
 *.tsbuildinfo
 
 #cache files
-__pycache__
+__pycache__/
+/__pycache__/
+/colorama
+initialise.cpython-311.pyc
+win32.cpython-311.pyc
 
 
