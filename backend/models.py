@@ -1,6 +1,6 @@
-from app import db
 import datetime
 from sqlalchemy.ext.associationproxy import association_proxy
+from .extensions import db
 
 class Order(db.Model):
   ambulance = db.relationship('Ambulance', back_populates='attended_victims_association')
