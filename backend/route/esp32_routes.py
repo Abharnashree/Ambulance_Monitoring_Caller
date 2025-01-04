@@ -17,6 +17,10 @@ def start_session():
     customer_id = data.get('customer_id')
     ambulance_id = data.get('ambulance_id')
 
+    # customer_id = '1234567890'
+    # ambulance_id = 2
+    
+
     if not customer_id or not ambulance_id:
         return jsonify({"error": "Missing customer_id or ambulance_id"}), 400
 

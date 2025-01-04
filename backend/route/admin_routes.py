@@ -38,9 +38,9 @@ def init_db_with_dummy_data():
     caller2 = Caller("0987654321")
     amb1 = Ambulance(1, "Basic life support")
     amb2 = Ambulance(2, "Advanced life support")
-    order1 = Order(1, amb1, caller1)
-    order2 = Order(2, amb1, caller2)
-    order3 = Order(3, amb2, caller1)
+    order1 = Order(amb1, caller1)
+    order2 = Order(amb1, caller2)
+    order3 = Order(amb2, caller1)
     db.session.add_all([amb1, amb2, caller1, caller2, order1, order2, order3])
     db.session.commit() 
     return "added"
