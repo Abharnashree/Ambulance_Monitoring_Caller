@@ -1,15 +1,25 @@
-Set up for backend (local)
+Backend local setup:
 
-Pre-requisites : python (version > 3), xampp(or wampp or lammp), postman(desktop)
+Pre-requisites in machine : python (version > 3), xampp (or wampp, or lampp), Postman(desktop preferrable)
 
-Steps:
+Step 1: Clone this repo : git clone https://github.com/Abharnashree/Ambulance_Monitoring.git
+Step 2: navigate into the repo and create a virtual environment :
+        this tutorial can be helpful : https://www.youtube.com/watch?v=Y21OR1OPC9A
+        Setup and activate the virtual environment.
+Step 3: Install all the packages listed in the file backend/requirements.txt
+        To do that, run the following command in your terminal
+        (venv)YOUR_PATH\Ambulance_Monitoring> pip install -r backend/requirements.txt    (or)
+        (venv)YOUR_PATH\Ambulance_Monitoring\backend> pip install -r requirements.txt
 
-Now to run this server, you have to install the requirements listed in the file requirements.txt.
-Best practice is to setup a virtial environment and install all the requirements locally
-youtute tutorial : https://www.youtube.com/watch?v=Y21OR1OPC9A
+Step 4: Also, start your apache and mysql servers(preferrably on their default ports).
+        Head over to 'localhost' in your browser, and click phpMyAdmin
+        Now create a new database for our server.
+        reflect your changes to \__init__.py (to the database connection uri)
 
-After setting up the environment and installing the requirements, run your apache and mysql services in xampp. And now in phpMyAdmin, create a database for this project and name it as 'flask' without any password(name it anything you want, but make sure to rename it in __init__.py)
+Step 5: Now, run the following command to start the server
+        >flask run
 
-Now run the following command in your terminal :
-flask run
+Features:
 
+You can utilize the /init_db_with_dummy_data to populate the db with dummy data
+Use postman for requests
