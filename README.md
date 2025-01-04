@@ -13,6 +13,3 @@ After setting up the environment and installing the requirements, run your apach
 Now run the following command in your terminal :
 flask run
 
-You are free to make modifications to the setup as long as you know what you are doing
-
-happy debugging
