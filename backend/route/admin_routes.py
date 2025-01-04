@@ -34,16 +34,21 @@ def add_ambulance():
 @admin.route('/init_db_with_dummy_data', methods=['POST'])
 def init_db_with_dummy_data():
     db.create_all()
-    caller1 = Caller("1234567890")
-    caller2 = Caller("0987654321")
-    amb1 = Ambulance(1, "Basic life support")
-    amb2 = Ambulance(2, "Advanced life support")
-    order1 = Order(amb1, caller1)
-    order2 = Order(amb1, caller2)
-    order3 = Order(amb2, caller1)
-    db.session.add_all([amb1, amb2, caller1, caller2, order1, order2, order3])
+
+    ambulances = [Ambulance(x, "basic life support") for x in range(1,100)]
+    callers = [Caller(str(x)) for x in range(9_120_356_632,9_999_999_999,1_032_789)]
+    orders = [Order(amb, caller) for amb, caller in zip(ambulances[1:100:4], callers[11:555:23])]
+    
+    db.session.add_all(ambulances)
+    db.session.add_all(callers)
+    db.session.add_all(orders)
+
     db.session.commit() 
-    return "added"
+    return jsonify({
+        "ambulances": [ambulance.id for ambulance in ambulances],
+        "callers": [caller.phone_no for caller in callers],
+        "orders" : [order.order_id for order in orders]
+    })
 
 @admin.route('/update_ambulance/<int:ambulance_id>', methods=['PUT'])
 def update_ambulance(ambulance_id):
