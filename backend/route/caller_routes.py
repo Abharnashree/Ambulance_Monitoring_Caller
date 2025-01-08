@@ -16,6 +16,12 @@ def create_booking():
     data = request.json
 
     caller_phone_no = data.get('caller_phone_no')
+    """
+    To-do
+    have to assign the nearest ambulance here using 
+    google maps api
+
+    """
     ambulance_id = data.get('ambulance_id')
     date_time = data.get('date_time', datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
@@ -35,6 +41,7 @@ def create_booking():
         caller=caller,
         date_time=datetime.datetime.strptime(date_time, "%Y-%m-%d %H:%M:%S")
     )
+    new_booking.order_status = Order_status.IN_PROGRESS
     db.session.add(new_booking)
 
     ambulance.isAvailable = False

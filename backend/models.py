@@ -1,17 +1,29 @@
-import datetime
+from datetime import datetime
 from sqlalchemy.ext.associationproxy import association_proxy
 from .extensions import db
+from enum import Enum
+
+class Order_status(Enum):
+  PENDING =  "Pending"
+  IN_PROGRESS = "In Progress"
+  COMPLETED = "Completed"
+
+class Ambulance_type(Enum):
+  BASIC = "Basic"
+  ADVANCED = "Advanced"
 
 class Order(db.Model):
   ambulance = db.relationship('Ambulance', back_populates='attended_victims_association')
   caller = db.relationship('Caller', back_populates='call_requests')
 
   order_id = db.Column(db.Integer, primary_key=True)
-  ambulance_id = db.Column('ambulance_id', db.Integer, db.ForeignKey('ambulance.id'))
-  caller_phone_no = db.Column('caller_phone_no', db.String(10), db.ForeignKey('caller.phone_no'))
-  date_time = db.Column(db.DateTime, default=datetime.datetime.now())
+  ambulance_id = db.Column('ambulance_id', db.Integer, db.ForeignKey('ambulance.id'), nullable=False)
+  caller_phone_no = db.Column('caller_phone_no', db.String(10), db.ForeignKey('caller.phone_no'), nullable=False)
+  date_time = db.Column(db.DateTime, default=datetime.now())
+  order_status = db.Column(db.Enum(Order_status), default= Order_status.PENDING)
 
-  def __init__(self, ambulance, caller, date_time=datetime.datetime.now()):
+
+  def __init__(self, ambulance, caller, date_time=datetime.now()):
     self.ambulance = ambulance
     self.caller = caller
     self.date_time = date_time
@@ -21,7 +33,7 @@ class Ambulance(db.Model):
   latitude = db.Column(db.Float)
   longitude = db.Column(db.Float)
   isAvailable = db.Column(db.Boolean)
-  type = db.Column(db.String(20))
+  type = db.Column(db.Enum(Ambulance_type))
   attended_victims_association = db.relationship('Order', back_populates='ambulance')
   attended_victims = association_proxy('attended_victims_association', 'caller')
 

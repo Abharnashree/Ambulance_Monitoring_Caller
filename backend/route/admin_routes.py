@@ -35,7 +35,7 @@ def add_ambulance():
 def init_db_with_dummy_data():
     db.create_all()
 
-    ambulances = [Ambulance(x, "basic life support") for x in range(1,100)]
+    ambulances = [Ambulance(x, Ambulance_type.BASIC) for x in range(1,100)]
     callers = [Caller(str(x)) for x in range(9_120_356_632,9_999_999_999,1_032_789)]
     orders = [Order(amb, caller) for amb, caller in zip(ambulances[1:100:4], callers[11:555:23])]
     
