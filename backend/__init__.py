@@ -8,7 +8,7 @@ from .route.driver_routes import driver
 def create_app():
   app = Flask(__name__)
   
-  app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://root:password@localhost/sample'
+  app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://root:@localhost/ambulance_db'
   #app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:''@localhost/ambulance_monitoring'  #if you have used any other db name, changing here alone would suffice
   app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
