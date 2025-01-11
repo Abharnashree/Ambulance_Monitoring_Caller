@@ -49,8 +49,7 @@ def create_booking():
 
     new_booking.order_status = Order_status.IN_PROGRESS 
     '''
-    $$ur db probably doesnt have a this column(order_status), so use alter table and add it
-    $$ Also the "type" in ambulance table will work with only 2 values
+    $$ the "type" in ambulance table will work with only 2 values
     "BASIC" and "ADVANCED" and not "basic life support" or "advanced life support"
     '''
     db.session.add(new_booking)
