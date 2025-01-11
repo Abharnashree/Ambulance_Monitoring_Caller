@@ -56,7 +56,13 @@ def get_ambulance_map():
     ambulance = Ambulance.query.filter_by(id=ambulance_id).first()
     if not ambulance:
         return jsonify({"error": "Ambulance not found"}), 404
+    
 
+    """
+    To-do
+    Send the route (find using google maps api) along with below coordinates
+
+    """
     return jsonify({
         "customer": {
             "phone_no": customer.phone_no,
