@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, render_template
 from ..models import *
 from ..extensions import db
 
@@ -8,7 +8,12 @@ admin = Blueprint('admin', __name__)
 Add ambulance - add_ambulance
 init ambulances - init_db_with_dummy_data
 Update ambulance - update_ambulance
+
 """
+
+@admin.route("/", methods=['GET'])
+def index():
+    return render_template("index.html")
 
 @admin.route('/add_ambulance', methods=['POST'])
 def add_ambulance():
