@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from ..models import *
-from ..extensions import db
+from ..extensions import db, redis_client
 import datetime
 
 caller = Blueprint('caller', __name__)
