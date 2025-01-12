@@ -1,15 +1,10 @@
 import googlemaps #use pip install googlemaps if u dont have
 from flask import Blueprint, request, jsonify
 from ..models import *
-<<<<<<< HEAD
 from ..extensions import db, redis_client
-import datetime
-=======
-from ..extensions import db
 from datetime import datetime
 import math
 
->>>>>>> 080997c12e56ef9aaee95d16d797a777f28f9c8b
 
 caller = Blueprint('caller', __name__)
 gmaps = googlemaps.Client(key='AIzaSyDJfABDdpB7fIMs_F4e1IeqKoEQ2BSNSl0')

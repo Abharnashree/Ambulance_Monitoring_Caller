@@ -73,7 +73,7 @@ def clear_session():
     session.pop('start_time', None)
 
 
-@driver.route('/update-location', methods=['POST'])
+@driver.route('/driver/update-location', methods=['POST'])
 def update_location():
     data = request.json
     order_id = data['order_id']
