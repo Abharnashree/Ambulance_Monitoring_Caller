@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, session, request
 from ..models import *
-from ..extensions import db, redis_client
+from ..extensions import db, redis_client, socketio
 import datetime
 
 driver = Blueprint('driver', __name__)
@@ -88,7 +88,14 @@ def update_location():
         db.session.commit()
 
         # Notify traffic lights on the route
-        redis_client.publish('traffic_updates', f"{order_id},{ambulance_lat},{ambulance_lon}")
+        redis_client.publish('ambulance_updates', f"{order_id},{ambulance_lat},{ambulance_lon}")
+
+        socketio.emit('ambulance_update', {
+            'order_id': order_id,
+            'latitude': ambulance_lat,
+            'longitude': ambulance_lon
+        })
+
 
         return jsonify({"message": "Location updated"}), 200
 

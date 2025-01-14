@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify, render_template
+import requests
 from ..models import *
 from ..extensions import db
 
@@ -39,9 +40,46 @@ def add_ambulance():
 @admin.route('/init_db_with_dummy_data', methods=['POST'])
 def init_db_with_dummy_data():
     db.create_all()
+    overpass_url = "https://overpass-api.de/api/interpreter"
 
-    ambulances = [Ambulance(x, Ambulance_type.BASIC) for x in range(1,100)]
-    callers = [Caller(str(x)) for x in range(9_120_356_632,9_999_999_999,1_032_789)]
+    overpass_query = """
+    [out:json];
+    (
+    node["amenity"="hospital"](13.0000,80.2000,13.2000,80.4000);
+    way["amenity"="hospital"](13.0000,80.2000,13.2000,80.4000);
+    relation["amenity"="hospital"](13.0000,80.2000,13.2000,80.4000);
+    );
+    out center;
+    """
+
+    response = requests.get(overpass_url, params={'data': overpass_query})
+
+    if response.status_code == 200:
+        data = response.json()
+        ambulances = []
+        i = 1
+
+        for element in data['elements']:
+            if i % 20 != 0:
+                i += 1
+                continue
+            ambulance = Ambulance(i, Ambulance_type.BASIC if i%3 != 0 else Ambulance_type.ADVANCED)
+            if element['type'] == 'node':
+                ambulance.latitude = element['lat']
+                ambulance.longitude = element['lon']
+            elif 'center' in element:
+                ambulance.latitude = element['center']['lat']
+                ambulance.longitude = element['center']['lon']
+            else:
+                continue
+            
+            ambulances.append(ambulance)
+            i += 1
+    else:
+        ambulances = [Ambulance(x, Ambulance_type.BASIC) for x in range(1,100)]
+
+        
+    callers = [Caller(str(x)) for x in range(9_120_356_632, 9_999_999_999, 1_032_789)]
     orders = [Order(amb, caller) for amb, caller in zip(ambulances[1:100:4], callers[11:555:23])]
     
     db.session.add_all(ambulances)

@@ -75,7 +75,7 @@ def find_nearest_ambulance(caller_lat, caller_long):
     nearest_ambulance = None
     shortest_distance = float('inf')
     for ambulance in ambulances:
-        if not(ambulance.latitude or ambulance.longitude):
+        if not(ambulance.latitude and ambulance.longitude):
             continue
         ambulance_lat = ambulance.latitude
         ambulance_long = ambulance.longitude
@@ -86,13 +86,15 @@ def find_nearest_ambulance(caller_lat, caller_long):
         destination = (ambulance_lat, ambulance_long)
         # Calculate distance
         result = gmaps.distance_matrix(origins=[origin], destinations=[destination], mode='driving')
+        print(result)
        
-        if result['status'] == 'OK':
-            distance = result['rows'][0]['elements'][0]['distance']['value']  # Distance in meters
+        if result['rows'][0]['elements'][0]['status'] == 'OK':
+            distance = result['rows'][0]['elements'][0]["distance"]['value']  # Distance in meters
             if distance < shortest_distance:
                 shortest_distance = distance
                 nearest_ambulance = ambulance
-
+        else:
+            print("not ok")
 
     return nearest_ambulance
 

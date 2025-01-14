@@ -10,7 +10,7 @@ import threading
 
 def create_app():
   app = Flask(__name__)
-  print("created app")
+  # print("created app")
   
   
   # app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://root:@localhost/ambulance_db'
@@ -36,12 +36,14 @@ def create_app():
 
   def redis_listener():
     pubsub = redis_client.pubsub()
-    pubsub.subscribe('traffic_updates')
+    pubsub.subscribe('ambulance_updates')
+    #TO-DO
+    #notify the traffic police on the route
     for message in pubsub.listen():
         if message['type'] == 'message':
             # Broadcast the message to WebSocket clients
             data = message['data']  # Example: "order_id,latitude,longitude"
-            socketio.emit('traffic_update', {'data': data})
+            socketio.emit('ambulance_update', {'data': data})
 
   # Start Redis listener in a separate thread
   listener_thread = threading.Thread(target=redis_listener)
