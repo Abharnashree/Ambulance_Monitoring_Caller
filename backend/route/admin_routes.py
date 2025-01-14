@@ -60,6 +60,9 @@ def init_db_with_dummy_data():
         i = 1
 
         for element in data['elements']:
+            if i % 20 != 0:
+                i += 1
+                continue
             ambulance = Ambulance(i, Ambulance_type.BASIC if i%3 != 0 else Ambulance_type.ADVANCED)
             if element['type'] == 'node':
                 ambulance.latitude = element['lat']
