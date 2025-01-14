@@ -28,21 +28,19 @@ def create_booking():
 
     # Find the nearest available ambulance
     nearest_ambulance = find_nearest_ambulance(caller_lat, caller_long)
-    print(nearest_ambulance)
+
     if not nearest_ambulance:
         return jsonify({"message": "No available ambulance found nearby!"}), 404
 
-    # Create the booking
-    amb = Ambulance.query.filter_by(id=nearest_ambulance['ambulance_id']).first()
-    print(amb)
+
     new_booking = Order(
-        ambulance= amb,
+        ambulance= nearest_ambulance,
         caller=caller,
         date_time=datetime.now(),
         order_status=Order_status.IN_PROGRESS
     )
     db.session.add(new_booking)
-    amb.isAvailable = False  # Mark ambulance as unavailable
+    nearest_ambulance.isAvailable = False  # Mark ambulance as unavailable
     db.session.commit()
 
     # Emit details to both frontends using Socket.IO
@@ -57,14 +55,14 @@ def create_booking():
     socketio.emit('patient_location', {
         "patient_latitude": caller_lat,
         "patient_longitude": caller_long
-    }, to=f"ambulance-{amb.id}")
+    }, to=f"ambulance-{nearest_ambulance.id}")
 
     return jsonify({
         "message": "Booking created successfully!",
         "booking_details": {
             "order_id": new_booking.order_id,
             "caller_phone_no": caller_phone_no,
-            "ambulance_id": amb.id,
+            "ambulance_id": nearest_ambulance.id,
             "date_time": new_booking.date_time.strftime("%Y-%m-%d %H:%M:%S")
         }
     }), 201
@@ -76,14 +74,14 @@ def find_nearest_ambulance(caller_lat, caller_long):
     if not ambulances:
         return None
 
+    #works only for less than 25 ambulances
+    #max limit of origins length - 25
     origins = '|'.join([f"{amb.latitude},{amb.longitude}" for amb in ambulances])
     destination = f"{caller_lat},{caller_long}"
 
     url = f"https://maps.googleapis.com/maps/api/distancematrix/json?units=metric&origins={origins}&destinations={destination}&key={'AIzaSyDJfABDdpB7fIMs_F4e1IeqKoEQ2BSNSl0'}"
     response = requests.get(url)
     data = response.json()
-    print(data)
-
 
     if data.get('status') != 'OK':
         raise Exception(f"Google Maps API error: {data.get('error_message', 'Unknown error')}")
@@ -104,7 +102,7 @@ def find_nearest_ambulance(caller_lat, caller_long):
 
     # Find the ambulance with the minimum distance
     nearest = min(distances, key=lambda x: x['distance'])
-    return nearest
+    return Ambulance.query.filter_by(id=nearest['ambulance_id']).first()
 
 
     # nearest_ambulance = None
