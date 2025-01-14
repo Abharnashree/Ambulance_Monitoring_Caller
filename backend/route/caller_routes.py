@@ -5,6 +5,7 @@ import googlemaps
 from ..models import *
 from ..extensions import db, redis_client, socketio
 import requests
+import math 
 
 
 caller = Blueprint('caller', __name__)
@@ -68,23 +69,37 @@ def create_booking():
     }), 201
 
 
+def haversine_distance(lat1, lon1, lat2, lon2):
+    # Calculate the great-circle distance between two points on the Earth
+    R = 6371  # Radius of Earth in kilometers
+    lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return R * c
+
+
 # Function to find nearest ambulance
 def find_nearest_ambulance(caller_lat, caller_long):
-    ambulances = Ambulance.query.filter_by(isAvailable=True).all()
-    if not ambulances:
-        return None
-
+    radius = 5  # Initial search radius in kilometers
+    step = 5    # Increment step for the radius
+    max_radius = 50
+   
     # #works only for less than 25 ambulances
     # #max limit of origins length - 25
     # origins = '|'.join([f"{amb.latitude},{amb.longitude}" for amb in ambulances])
     # destination = f"{caller_lat},{caller_long}"
 
+
     # url = f"https://maps.googleapis.com/maps/api/distancematrix/json?units=metric&origins={origins}&destinations={destination}&key={'AIzaSyDJfABDdpB7fIMs_F4e1IeqKoEQ2BSNSl0'}"
     # response = requests.get(url)
     # data = response.json()
 
+
     # if data.get('status') != 'OK':
     #     raise Exception(f"Google Maps API error: {data.get('error_message', 'Unknown error')}")
+
 
     # distances = []
     # for i, row in enumerate(data['rows']):
@@ -97,34 +112,48 @@ def find_nearest_ambulance(caller_lat, caller_long):
     #         else:
     #             print(f"Error for ambulance {ambulances[i].id}: {element.get('status', 'Unknown error')}")
 
+
     # if not distances:
     #     raise Exception("No valid ambulances found with a route to the caller.")
+
 
     # # Find the ambulance with the minimum distance
     # nearest = min(distances, key=lambda x: x['distance'])
     # return Ambulance.query.filter_by(id=nearest['ambulance_id']).first()
 
 
+
+
     nearest_ambulance = None
     shortest_distance = float('inf')
+    while radius <= max_radius:
+        # Filter ambulances within the current radius
+        ambulances = [
+            ambulance for ambulance in Ambulance.query.filter_by(isAvailable=True).all()
+            if ambulance.latitude and ambulance.longitude and
+            haversine_distance(caller_lat, caller_long, ambulance.latitude, ambulance.longitude) <= radius
+        ]
 
-    for ambulance in ambulances:
-        if not(ambulance.latitude and ambulance.longitude):
-            continue
 
-        # Calculate the distance using Google Maps API
-        origin = (caller_lat, caller_long)
-        destination = (ambulance.latitude, ambulance.longitude)
-        result = gmaps.distance_matrix(origins=[origin], destinations=[destination], mode='driving')
-        print(result)
-       
-        if result['rows'][0]['elements'][0]['status'] == 'OK':
-            distance = result['rows'][0]['elements'][0]["distance"]['value']  # Distance in meters
-            if distance < shortest_distance:
-                shortest_distance = distance
-                nearest_ambulance = ambulance
-        else:
-            print("not ok")
+        if ambulances:
+            # If ambulances are found, calculate the distance using Google Maps API
+            for ambulance in ambulances:
+                origin = (ambulance.latitude, ambulance.longitude)
+                destination = (caller_lat, caller_long)
+                result = gmaps.distance_matrix(origins=[origin], destinations=[destination], mode='driving')
+                print(result)
+                if result['rows'][0]['elements'][0]['status'] == 'OK':
+                    distance = result['rows'][0]['elements'][0]["distance"]['value']  
+                    if distance < shortest_distance:
+                        shortest_distance = distance
+                        nearest_ambulance = ambulance
+                else:
+                    print("not ok")
+            break  
+
+
+        radius += step
+
 
     return nearest_ambulance
 
