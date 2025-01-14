@@ -126,6 +126,7 @@ def find_nearest_ambulance(caller_lat, caller_long):
 
     nearest_ambulance = None
     shortest_distance = float('inf')
+    
     while radius <= max_radius:
         # Filter ambulances within the current radius
         ambulances = [
@@ -134,26 +135,30 @@ def find_nearest_ambulance(caller_lat, caller_long):
             haversine_distance(caller_lat, caller_long, ambulance.latitude, ambulance.longitude) <= radius
         ]
 
-
         if ambulances:
-            # If ambulances are found, calculate the distance using Google Maps API
-            for ambulance in ambulances:
-                origin = (ambulance.latitude, ambulance.longitude)
-                destination = (caller_lat, caller_long)
-                result = gmaps.distance_matrix(origins=[origin], destinations=[destination], mode='driving')
-                print(result)
-                if result['rows'][0]['elements'][0]['status'] == 'OK':
-                    distance = result['rows'][0]['elements'][0]["distance"]['value']  
-                    if distance < shortest_distance:
-                        shortest_distance = distance
-                        nearest_ambulance = ambulance
-                else:
-                    print("not ok")
-            break  
+            # If ambulances are found, prepare the origins list for the API request
+            origins = [(ambulance.latitude, ambulance.longitude) for ambulance in ambulances]
+            destination = (caller_lat, caller_long)
+            
+            # Make the API request with all ambulances as origins
+            result = gmaps.distance_matrix(origins=origins, destinations=[destination], mode='driving')
+            print(result)
+            if result['status'] == 'OK':
+                # Iterate through all the distances in the result
+                for i, element in enumerate(result['rows'][0]['elements']):
+                    if element['status'] == 'OK':
+                        distance = element["distance"]['value']
+                        if distance < shortest_distance:
+                            shortest_distance = distance
+                            nearest_ambulance = ambulances[i]
+                    else:
+                        print(f"Error for ambulance {ambulances[i].id}: {element.get('status', 'Unknown error')}")
+            else:
+                print("Google Maps API error:", result.get('error_message'))
 
+            break  # Exit the loop once we find the nearest ambulance
 
         radius += step
-
 
     return nearest_ambulance
 

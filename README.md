@@ -24,3 +24,16 @@ Features:
 
 You can utilize the /init_db_with_dummy_data to populate the db with dummy data
 Use postman for requests
+
+
+TO-DO LIST:
+
+1)Genereating routing to the caller through API
+2)(Frontend) Displaying the route to the map
+3)Assinging closest hospital
+4)Victim to hospital route finding
+5)(frontend) Displaying route to map
+6)User Auth
+7)Integration
+
+use ✅ after completing
