@@ -1,19 +1,15 @@
-import googlemaps #use pip install googlemaps if u dont have
-from flask import Blueprint, request, jsonify
-from ..models import *
-from ..extensions import db, redis_client
+from flask import Flask, Blueprint, request, jsonify
+from flask_socketio import SocketIO, emit, join_room
 from datetime import datetime
-import math
+import googlemaps
+from ..models import *
+from ..extensions import db
 
-
+app = Flask(__name__)
+socketio = SocketIO(app, cors_allowed_origins="*")
 caller = Blueprint('caller', __name__)
 gmaps = googlemaps.Client(key='AIzaSyDJfABDdpB7fIMs_F4e1IeqKoEQ2BSNSl0')
-
-
-"""
-Create Booking - create_booking
-Get Booking details with callerno - get_booking_details
-"""
+redis_client = redis.StrictRedis(host='localhost', port=6379, db=0, decode_responses=True)
 
 @caller.route('/caller/booking', methods=['POST'])
 def create_booking():
@@ -21,70 +17,72 @@ def create_booking():
     caller_phone_no = data.get('caller_phone_no')
     caller_lat = data.get('latitude')
     caller_long = data.get('longitude')
-    """
-    To-do
-    have to assign the nearest ambulance here using
-    google maps api
-    """
-    if not caller_phone_no:
-        return jsonify({"message": "caller_phone_no and is required!"}), 400
 
+    if not caller_phone_no:
+        return jsonify({"message": "caller_phone_no is required!"}), 400
+
+    # Find the caller
     caller = Caller.query.filter_by(phone_no=caller_phone_no).first()
     if not caller:
         return jsonify({"message": f"Caller with phone_no {caller_phone_no} does not exist!"}), 404
 
-    # Find the nearest available ambulance using Google Maps API
+    # Find the nearest available ambulance
     nearest_ambulance = find_nearest_ambulance(caller_lat, caller_long)
-
     if not nearest_ambulance:
         return jsonify({"message": "No available ambulance found nearby!"}), 404
 
-    # Assign ambulance if a valid ambulance is found
-    ambulance = nearest_ambulance
-
+    # Create the booking
     new_booking = Order(
-    ambulance=ambulance,  
-    caller=caller,  
-    date_time=datetime.now())
-
-    new_booking.order_status = Order_status.IN_PROGRESS 
-    '''
-    $$ the "type" in ambulance table will work with only 2 values
-    "BASIC" and "ADVANCED" and not "basic life support" or "advanced life support"
-    '''
+        ambulance=nearest_ambulance,
+        caller=caller,
+        date_time=datetime.now(),
+        order_status=Order_status.IN_PROGRESS
+    )
     db.session.add(new_booking)
-    ambulance.isAvailable = False
+    nearest_ambulance.isAvailable = False  # Mark ambulance as unavailable
     db.session.commit()
+
+    # Emit details to both frontends using Socket.IO
+    # Send driver details to the caller's frontend
+    socketio.emit('driver_details', {
+        "driver_name": nearest_ambulance.driver_name,
+        "driver_phone": nearest_ambulance.driver_phone,
+        "vehicle_number": nearest_ambulance.vehicle_number
+    }, to=f"caller-{caller_phone_no}")
+
+    # Send patient location to the ambulance driver's frontend
+    socketio.emit('patient_location', {
+        "patient_latitude": caller_lat,
+        "patient_longitude": caller_long
+    }, to=f"ambulance-{nearest_ambulance.id}")
+
     return jsonify({
         "message": "Booking created successfully!",
         "booking_details": {
             "order_id": new_booking.order_id,
             "caller_phone_no": caller_phone_no,
-            "ambulance_id": ambulance.id,
+            "ambulance_id": nearest_ambulance.id,
             "date_time": new_booking.date_time.strftime("%Y-%m-%d %H:%M:%S")
         }
     }), 201
 
 
+# Function to find nearest ambulance
 def find_nearest_ambulance(caller_lat, caller_long):
     ambulances = Ambulance.query.filter_by(isAvailable=True).all()
     if not ambulances:
         return None
-    
-    # Initialize variables to keep track of the nearest ambulance
+
     nearest_ambulance = None
     shortest_distance = float('inf')
+
     for ambulance in ambulances:
         if not(ambulance.latitude and ambulance.longitude):
             continue
-        ambulance_lat = ambulance.latitude
-        ambulance_long = ambulance.longitude
 
-
-        # This Uses Google Maps Distance Matrix API to calculate the distance
+        # Calculate the distance using Google Maps API
         origin = (caller_lat, caller_long)
-        destination = (ambulance_lat, ambulance_long)
-        # Calculate distance
+        destination = (ambulance.latitude, ambulance.longitude)
         result = gmaps.distance_matrix(origins=[origin], destinations=[destination], mode='driving')
         print(result)
        
@@ -99,25 +97,57 @@ def find_nearest_ambulance(caller_lat, caller_long):
     return nearest_ambulance
 
 
-@caller.route('/caller/booking/<string:caller_no>', methods=['GET'])
-def get_booking_details(caller_no):
+# Socket.IO event to join rooms
+@socketio.on('join_room')
+def handle_join_room(data):
+    """
+    Handles joining rooms for clients.
+    Caller joins a room named 'caller-<phone_no>'.
+    Ambulance driver joins a room named 'ambulance-<ambulance_id>'.
+    """
+    room = data.get('room')
+    join_room(room)
+    print(f"Client joined room: {room}")
 
-    bookings = Order.query.filter_by(caller_phone_no=caller_no).all()
 
-    if not bookings:
-        return jsonify({"message": "No bookings found for this customer!"}), 404
+#This update the screen of the users if any movement is noticed from the driver 
+@caller.route('/ambulance/location/update', methods=['POST']) 
+def update_ambulance_location():
+    data = request.json
+    ambulance_id = data.get('ambulance_id')
+    latitude = data.get('latitude')
+    longitude = data.get('longitude')
 
-    booking_details_list = []
-    for booking in bookings:
-        ambulance = booking.ambulance
-        booking_details = {
-            "order_id": booking.order_id,
-            "ambulance_id": ambulance.id if ambulance else None,
-            "ambulance_type": ambulance.type if ambulance else None,
-            "ambulance_available": ambulance.isAvailable if ambulance else None,
-            "date_time": booking.date_time.strftime("%Y-%m-%d %H:%M:%S"),
-            "caller_phone_no": booking.caller_phone_no
-        }
-        booking_details_list.append(booking_details)
+    if not ambulance_id or not latitude or not longitude:
+        return jsonify({"message": "ambulance_id, latitude, and longitude are required!"}), 400
 
-    return jsonify({"booking_details": booking_details_list}), 200
+    ambulance = Ambulance.query.get(ambulance_id)
+    if not ambulance:
+        return jsonify({"message": f"Ambulance with ID {ambulance_id} not found!"}), 404
+
+    # Get the active order for this ambulance
+    order = Order.query.filter_by(ambulance_id=ambulance_id, order_status=Order_status.IN_PROGRESS).first()
+    if not order:
+        return jsonify({"message": "No active order found for this ambulance!"}), 404
+
+    # Send the updated location to the caller based on the order
+    caller_phone_no = order.caller.phone_no
+
+    # Notify both frontends (caller and ambulance driver) about the ambulance's updated location
+    socketio.emit('ambulance_location_update', {
+        "ambulance_id": ambulance_id,
+        "latitude": latitude,
+        "longitude": longitude
+    }, to=f"caller-{caller_phone_no}")
+
+    socketio.emit('ambulance_location_update', {
+        "ambulance_id": ambulance_id,
+        "latitude": latitude,
+        "longitude": longitude
+    }, to=f"ambulance-{ambulance_id}")
+
+    # Cache the updated location in Redis
+    redis_client.set(f"ambulance:{ambulance_id}:location", f"{latitude},{longitude}") #Saving the change cause we might need it later, idk
+
+    # Return success response
+    return jsonify({"message": "Ambulance location updated successfully!"}), 200
