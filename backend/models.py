@@ -23,10 +23,11 @@ class Order(db.Model):
   order_status = db.Column(db.Enum(Order_status), default= Order_status.PENDING)
 
 
-  def __init__(self, ambulance, caller, date_time=datetime.now()):
+  def __init__(self, ambulance, caller, date_time=datetime.now(), order_status=Order_status.PENDING):
     self.ambulance = ambulance
     self.caller = caller
     self.date_time = date_time
+    self.order_status = order_status
 
 class Ambulance(db.Model):
   id = db.Column(db.Integer, primary_key = True)

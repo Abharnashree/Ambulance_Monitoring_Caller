@@ -3,13 +3,13 @@ from flask_socketio import SocketIO, emit, join_room
 from datetime import datetime
 import googlemaps
 from ..models import *
-from ..extensions import db
+from ..extensions import db, redis_client, socketio
+import requests
 
-app = Flask(__name__)
-socketio = SocketIO(app, cors_allowed_origins="*")
+
 caller = Blueprint('caller', __name__)
 gmaps = googlemaps.Client(key='AIzaSyDJfABDdpB7fIMs_F4e1IeqKoEQ2BSNSl0')
-redis_client = redis.StrictRedis(host='localhost', port=6379, db=0, decode_responses=True)
+
 
 @caller.route('/caller/booking', methods=['POST'])
 def create_booking():
@@ -28,40 +28,43 @@ def create_booking():
 
     # Find the nearest available ambulance
     nearest_ambulance = find_nearest_ambulance(caller_lat, caller_long)
+    print(nearest_ambulance)
     if not nearest_ambulance:
         return jsonify({"message": "No available ambulance found nearby!"}), 404
 
     # Create the booking
+    amb = Ambulance.query.filter_by(id=nearest_ambulance['ambulance_id']).first()
+    print(amb)
     new_booking = Order(
-        ambulance=nearest_ambulance,
+        ambulance= amb,
         caller=caller,
         date_time=datetime.now(),
         order_status=Order_status.IN_PROGRESS
     )
     db.session.add(new_booking)
-    nearest_ambulance.isAvailable = False  # Mark ambulance as unavailable
+    amb.isAvailable = False  # Mark ambulance as unavailable
     db.session.commit()
 
     # Emit details to both frontends using Socket.IO
     # Send driver details to the caller's frontend
-    socketio.emit('driver_details', {
-        "driver_name": nearest_ambulance.driver_name,
-        "driver_phone": nearest_ambulance.driver_phone,
-        "vehicle_number": nearest_ambulance.vehicle_number
-    }, to=f"caller-{caller_phone_no}")
+    # socketio.emit('driver_details', {
+    #     "driver_name": nearest_ambulance.driver_name,
+    #     "driver_phone": nearest_ambulance.driver_phone,
+    #     "vehicle_number": nearest_ambulance.vehicle_number
+    # }, to=f"caller-{caller_phone_no}")
 
     # Send patient location to the ambulance driver's frontend
     socketio.emit('patient_location', {
         "patient_latitude": caller_lat,
         "patient_longitude": caller_long
-    }, to=f"ambulance-{nearest_ambulance.id}")
+    }, to=f"ambulance-{amb.id}")
 
     return jsonify({
         "message": "Booking created successfully!",
         "booking_details": {
             "order_id": new_booking.order_id,
             "caller_phone_no": caller_phone_no,
-            "ambulance_id": nearest_ambulance.id,
+            "ambulance_id": amb.id,
             "date_time": new_booking.date_time.strftime("%Y-%m-%d %H:%M:%S")
         }
     }), 201
@@ -73,28 +76,59 @@ def find_nearest_ambulance(caller_lat, caller_long):
     if not ambulances:
         return None
 
-    nearest_ambulance = None
-    shortest_distance = float('inf')
+    origins = '|'.join([f"{amb.latitude},{amb.longitude}" for amb in ambulances])
+    destination = f"{caller_lat},{caller_long}"
 
-    for ambulance in ambulances:
-        if not(ambulance.latitude and ambulance.longitude):
-            continue
+    url = f"https://maps.googleapis.com/maps/api/distancematrix/json?units=metric&origins={origins}&destinations={destination}&key={'AIzaSyDJfABDdpB7fIMs_F4e1IeqKoEQ2BSNSl0'}"
+    response = requests.get(url)
+    data = response.json()
+    print(data)
 
-        # Calculate the distance using Google Maps API
-        origin = (caller_lat, caller_long)
-        destination = (ambulance.latitude, ambulance.longitude)
-        result = gmaps.distance_matrix(origins=[origin], destinations=[destination], mode='driving')
-        print(result)
+
+    if data.get('status') != 'OK':
+        raise Exception(f"Google Maps API error: {data.get('error_message', 'Unknown error')}")
+
+    distances = []
+    for i, row in enumerate(data['rows']):
+        for element in row.get('elements', []):
+            if element.get('status') == 'OK' and 'distance' in element:
+                distances.append({
+                    'ambulance_id': ambulances[i].id,
+                    'distance': element['distance']['value']
+                })
+            else:
+                print(f"Error for ambulance {ambulances[i].id}: {element.get('status', 'Unknown error')}")
+
+    if not distances:
+        raise Exception("No valid ambulances found with a route to the caller.")
+
+    # Find the ambulance with the minimum distance
+    nearest = min(distances, key=lambda x: x['distance'])
+    return nearest
+
+
+    # nearest_ambulance = None
+    # shortest_distance = float('inf')
+
+    # for ambulance in ambulances:
+    #     if not(ambulance.latitude and ambulance.longitude):
+    #         continue
+
+    #     # Calculate the distance using Google Maps API
+    #     origin = (caller_lat, caller_long)
+    #     destination = (ambulance.latitude, ambulance.longitude)
+    #     result = gmaps.distance_matrix(origins=[origin], destinations=[destination], mode='driving')
+    #     print(result)
        
-        if result['rows'][0]['elements'][0]['status'] == 'OK':
-            distance = result['rows'][0]['elements'][0]["distance"]['value']  # Distance in meters
-            if distance < shortest_distance:
-                shortest_distance = distance
-                nearest_ambulance = ambulance
-        else:
-            print("not ok")
+    #     if result['rows'][0]['elements'][0]['status'] == 'OK':
+    #         distance = result['rows'][0]['elements'][0]["distance"]['value']  # Distance in meters
+    #         if distance < shortest_distance:
+    #             shortest_distance = distance
+    #             nearest_ambulance = ambulance
+    #     else:
+    #         print("not ok")
 
-    return nearest_ambulance
+    # return nearest_ambulance
 
 
 # Socket.IO event to join rooms
