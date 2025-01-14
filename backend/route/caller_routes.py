@@ -74,59 +74,59 @@ def find_nearest_ambulance(caller_lat, caller_long):
     if not ambulances:
         return None
 
-    #works only for less than 25 ambulances
-    #max limit of origins length - 25
-    origins = '|'.join([f"{amb.latitude},{amb.longitude}" for amb in ambulances])
-    destination = f"{caller_lat},{caller_long}"
+    # #works only for less than 25 ambulances
+    # #max limit of origins length - 25
+    # origins = '|'.join([f"{amb.latitude},{amb.longitude}" for amb in ambulances])
+    # destination = f"{caller_lat},{caller_long}"
 
-    url = f"https://maps.googleapis.com/maps/api/distancematrix/json?units=metric&origins={origins}&destinations={destination}&key={'AIzaSyDJfABDdpB7fIMs_F4e1IeqKoEQ2BSNSl0'}"
-    response = requests.get(url)
-    data = response.json()
+    # url = f"https://maps.googleapis.com/maps/api/distancematrix/json?units=metric&origins={origins}&destinations={destination}&key={'AIzaSyDJfABDdpB7fIMs_F4e1IeqKoEQ2BSNSl0'}"
+    # response = requests.get(url)
+    # data = response.json()
 
-    if data.get('status') != 'OK':
-        raise Exception(f"Google Maps API error: {data.get('error_message', 'Unknown error')}")
+    # if data.get('status') != 'OK':
+    #     raise Exception(f"Google Maps API error: {data.get('error_message', 'Unknown error')}")
 
-    distances = []
-    for i, row in enumerate(data['rows']):
-        for element in row.get('elements', []):
-            if element.get('status') == 'OK' and 'distance' in element:
-                distances.append({
-                    'ambulance_id': ambulances[i].id,
-                    'distance': element['distance']['value']
-                })
-            else:
-                print(f"Error for ambulance {ambulances[i].id}: {element.get('status', 'Unknown error')}")
+    # distances = []
+    # for i, row in enumerate(data['rows']):
+    #     for element in row.get('elements', []):
+    #         if element.get('status') == 'OK' and 'distance' in element:
+    #             distances.append({
+    #                 'ambulance_id': ambulances[i].id,
+    #                 'distance': element['distance']['value']
+    #             })
+    #         else:
+    #             print(f"Error for ambulance {ambulances[i].id}: {element.get('status', 'Unknown error')}")
 
-    if not distances:
-        raise Exception("No valid ambulances found with a route to the caller.")
+    # if not distances:
+    #     raise Exception("No valid ambulances found with a route to the caller.")
 
-    # Find the ambulance with the minimum distance
-    nearest = min(distances, key=lambda x: x['distance'])
-    return Ambulance.query.filter_by(id=nearest['ambulance_id']).first()
+    # # Find the ambulance with the minimum distance
+    # nearest = min(distances, key=lambda x: x['distance'])
+    # return Ambulance.query.filter_by(id=nearest['ambulance_id']).first()
 
 
-    # nearest_ambulance = None
-    # shortest_distance = float('inf')
+    nearest_ambulance = None
+    shortest_distance = float('inf')
 
-    # for ambulance in ambulances:
-    #     if not(ambulance.latitude and ambulance.longitude):
-    #         continue
+    for ambulance in ambulances:
+        if not(ambulance.latitude and ambulance.longitude):
+            continue
 
-    #     # Calculate the distance using Google Maps API
-    #     origin = (caller_lat, caller_long)
-    #     destination = (ambulance.latitude, ambulance.longitude)
-    #     result = gmaps.distance_matrix(origins=[origin], destinations=[destination], mode='driving')
-    #     print(result)
+        # Calculate the distance using Google Maps API
+        origin = (caller_lat, caller_long)
+        destination = (ambulance.latitude, ambulance.longitude)
+        result = gmaps.distance_matrix(origins=[origin], destinations=[destination], mode='driving')
+        print(result)
        
-    #     if result['rows'][0]['elements'][0]['status'] == 'OK':
-    #         distance = result['rows'][0]['elements'][0]["distance"]['value']  # Distance in meters
-    #         if distance < shortest_distance:
-    #             shortest_distance = distance
-    #             nearest_ambulance = ambulance
-    #     else:
-    #         print("not ok")
+        if result['rows'][0]['elements'][0]['status'] == 'OK':
+            distance = result['rows'][0]['elements'][0]["distance"]['value']  # Distance in meters
+            if distance < shortest_distance:
+                shortest_distance = distance
+                nearest_ambulance = ambulance
+        else:
+            print("not ok")
 
-    # return nearest_ambulance
+    return nearest_ambulance
 
 
 # Socket.IO event to join rooms
