@@ -28,21 +28,18 @@ def create_booking():
 
     # Find the nearest available ambulance
     nearest_ambulance = find_nearest_ambulance(caller_lat, caller_long)
-    print(nearest_ambulance)
+   
     if not nearest_ambulance:
         return jsonify({"message": "No available ambulance found nearby!"}), 404
 
-    # Create the booking
-    amb = Ambulance.query.filter_by(id=nearest_ambulance['ambulance_id']).first()
-    print(amb)
     new_booking = Order(
-        ambulance= amb,
+        ambulance= nearest_ambulance,
         caller=caller,
         date_time=datetime.now(),
         order_status=Order_status.IN_PROGRESS
     )
     db.session.add(new_booking)
-    amb.isAvailable = False  # Mark ambulance as unavailable
+    nearest_ambulance.isAvailable = False  # Mark ambulance as unavailable
     db.session.commit()
 
     # Emit details to both frontends using Socket.IO
@@ -57,14 +54,14 @@ def create_booking():
     socketio.emit('patient_location', {
         "patient_latitude": caller_lat,
         "patient_longitude": caller_long
-    }, to=f"ambulance-{amb.id}")
+    }, to=f"ambulance-{nearest_ambulance.id}")
 
     return jsonify({
         "message": "Booking created successfully!",
         "booking_details": {
             "order_id": new_booking.order_id,
             "caller_phone_no": caller_phone_no,
-            "ambulance_id": amb.id,
+            "ambulance_id": nearest_ambulance.id,
             "date_time": new_booking.date_time.strftime("%Y-%m-%d %H:%M:%S")
         }
     }), 201
@@ -82,9 +79,7 @@ def find_nearest_ambulance(caller_lat, caller_long):
     url = f"https://maps.googleapis.com/maps/api/distancematrix/json?units=metric&origins={origins}&destinations={destination}&key={'AIzaSyDJfABDdpB7fIMs_F4e1IeqKoEQ2BSNSl0'}"
     response = requests.get(url)
     data = response.json()
-    print(data)
-
-
+    
     if data.get('status') != 'OK':
         raise Exception(f"Google Maps API error: {data.get('error_message', 'Unknown error')}")
 
@@ -104,44 +99,7 @@ def find_nearest_ambulance(caller_lat, caller_long):
 
     # Find the ambulance with the minimum distance
     nearest = min(distances, key=lambda x: x['distance'])
-    return nearest
-
-
-    # nearest_ambulance = None
-    # shortest_distance = float('inf')
-
-    # for ambulance in ambulances:
-    #     if not(ambulance.latitude and ambulance.longitude):
-    #         continue
-
-    #     # Calculate the distance using Google Maps API
-    #     origin = (caller_lat, caller_long)
-    #     destination = (ambulance.latitude, ambulance.longitude)
-    #     result = gmaps.distance_matrix(origins=[origin], destinations=[destination], mode='driving')
-    #     print(result)
-       
-    #     if result['rows'][0]['elements'][0]['status'] == 'OK':
-    #         distance = result['rows'][0]['elements'][0]["distance"]['value']  # Distance in meters
-    #         if distance < shortest_distance:
-    #             shortest_distance = distance
-    #             nearest_ambulance = ambulance
-    #     else:
-    #         print("not ok")
-
-    # return nearest_ambulance
-
-
-# Socket.IO event to join rooms
-@socketio.on('join_room')
-def handle_join_room(data):
-    """
-    Handles joining rooms for clients.
-    Caller joins a room named 'caller-<phone_no>'.
-    Ambulance driver joins a room named 'ambulance-<ambulance_id>'.
-    """
-    room = data.get('room')
-    join_room(room)
-    print(f"Client joined room: {room}")
+    return Ambulance.query.filter_by(id=nearest['ambulance_id']).first()
 
 
 #This update the screen of the users if any movement is noticed from the driver 
