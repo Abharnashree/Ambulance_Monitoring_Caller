@@ -129,19 +129,6 @@ def find_nearest_ambulance(caller_lat, caller_long):
     return nearest_ambulance
 
 
-# Socket.IO event to join rooms
-@socketio.on('join_room')
-def handle_join_room(data):
-    """
-    Handles joining rooms for clients.
-    Caller joins a room named 'caller-<phone_no>'.
-    Ambulance driver joins a room named 'ambulance-<ambulance_id>'.
-    """
-    room = data.get('room')
-    join_room(room)
-    print(f"Client joined room: {room}")
-
-
 #This update the screen of the users if any movement is noticed from the driver 
 @caller.route('/ambulance/location/update', methods=['POST']) 
 def update_ambulance_location():
