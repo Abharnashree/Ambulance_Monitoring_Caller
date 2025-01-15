@@ -1,5 +1,4 @@
 from flask import Flask, Blueprint, request, jsonify
-from flask_socketio import SocketIO, emit, join_room
 from datetime import datetime
 import googlemaps
 from ..models import *
@@ -44,6 +43,17 @@ def create_booking():
     nearest_ambulance.isAvailable = False  # Mark ambulance as unavailable
     db.session.commit()
 
+    route_details = get_route_with_directions(
+        nearest_ambulance.latitude, nearest_ambulance.longitude, caller_lat, caller_long
+    )
+    if route_details is not None:
+        print("Route Details in Booking :\n")
+        print(route_details) 
+    else:
+        return jsonify({
+                "message":"No Route Details generated",
+                }), 400
+
     # Emit details to both frontends using Socket.IO
     # Send driver details to the caller's frontend
     # socketio.emit('driver_details', {
@@ -54,8 +64,11 @@ def create_booking():
 
     # Send patient location to the ambulance driver's frontend
     socketio.emit('patient_location', {
-        "patient_latitude": caller_lat,
-        "patient_longitude": caller_long
+        # "patient_latitude": caller_lat,
+        # "patient_longitude": caller_long,
+        "route": route_details["route"],  
+        "duration": route_details["duration"],  
+        "distance": route_details["distance"] 
     }, to=f"ambulance-{nearest_ambulance.id}")
 
     return jsonify({
@@ -85,45 +98,6 @@ def find_nearest_ambulance(caller_lat, caller_long):
     radius = 5  # Initial search radius in kilometers
     step = 5    # Increment step for the radius
     max_radius = 50
-   
-    # #works only for less than 25 ambulances
-    # #max limit of origins length - 25
-    # origins = '|'.join([f"{amb.latitude},{amb.longitude}" for amb in ambulances])
-    # destination = f"{caller_lat},{caller_long}"
-
-
-    # url = f"https://maps.googleapis.com/maps/api/distancematrix/json?units=metric&origins={origins}&destinations={destination}&key={'AIzaSyDJfABDdpB7fIMs_F4e1IeqKoEQ2BSNSl0'}"
-    # response = requests.get(url)
-    # data = response.json()
-
-
-    # if data.get('status') != 'OK':
-    #     raise Exception(f"Google Maps API error: {data.get('error_message', 'Unknown error')}")
-
-
-    # distances = []
-    # for i, row in enumerate(data['rows']):
-    #     for element in row.get('elements', []):
-    #         if element.get('status') == 'OK' and 'distance' in element:
-    #             distances.append({
-    #                 'ambulance_id': ambulances[i].id,
-    #                 'distance': element['distance']['value']
-    #             })
-    #         else:
-    #             print(f"Error for ambulance {ambulances[i].id}: {element.get('status', 'Unknown error')}")
-
-
-    # if not distances:
-    #     raise Exception("No valid ambulances found with a route to the caller.")
-
-
-    # # Find the ambulance with the minimum distance
-    # nearest = min(distances, key=lambda x: x['distance'])
-    # return Ambulance.query.filter_by(id=nearest['ambulance_id']).first()
-
-
-
-
     nearest_ambulance = None
     shortest_distance = float('inf')
     
@@ -162,9 +136,48 @@ def find_nearest_ambulance(caller_lat, caller_long):
 
     return nearest_ambulance
 
+#This function uses Directions API to get the route 
+def get_route_with_directions(origin_lat, origin_long, dest_lat, dest_long):
+    try:
+        # Request directions from Google Maps API
+        result = gmaps.directions(
+            origin=(origin_lat, origin_long),
+            destination=(dest_lat, dest_long),
+            mode="driving",
+            traffic_model="best_guess",  # Use real-time traffic data
+            departure_time="now"  # Get traffic details for the current time
+        )
+        print("get_route_with_directions: \n")
+        print(result)
+        if result and result[0]:
+            # Extract route details
+            route = result[0]['overview_polyline']['points']  # Encoded polyline for the route
+            legs = result[0]['legs'][0]
+            duration = legs['duration']['text']  # Total travel time (e.g., "25 mins")
+            distance = legs['distance']['text']  # Total distance (e.g., "10.5 km")
+
+            # Get step-by-step directions for turn-by-turn guidance, Let this just be over here for now 
+            # steps = []
+            # for step in legs['steps']:
+            #     directions = step['html_instructions']  # Direction instruction (e.g., "Turn left onto Main St.")
+            #     steps.append(directions)
+
+            return {
+                "route": route,
+                "duration": duration,
+                "distance": distance,
+                #"steps": steps
+            }
+        else:
+            return None
+    except Exception as e:
+        print("Error fetching directions:", str(e))
+        return None
+
+
 
 #This update the screen of the users if any movement is noticed from the driver 
-@caller.route('/ambulance/location/update', methods=['POST']) 
+@caller.route('/ambulance/location/update', methods=['POST'])
 def update_ambulance_location():
     data = request.json
     ambulance_id = data.get('ambulance_id')
@@ -183,24 +196,34 @@ def update_ambulance_location():
     if not order:
         return jsonify({"message": "No active order found for this ambulance!"}), 404
 
-    # Send the updated location to the caller based on the order
-    caller_phone_no = order.caller.phone_no
+    # Get caller's location (destination)
+    caller_lat = order.caller.latitude
+    caller_long = order.caller.longitude
 
-    # Notify both frontends (caller and ambulance driver) about the ambulance's updated location
-    socketio.emit('ambulance_location_update', {
-        "ambulance_id": ambulance_id,
-        "latitude": latitude,
-        "longitude": longitude
-    }, to=f"caller-{caller_phone_no}")
+    # Calculate route details using Directions API
+    route_details = get_route_with_directions(latitude, longitude, caller_lat, caller_long)
+    if not route_details:
+        return jsonify({"message": "Unable to fetch route details!"}), 500
 
-    socketio.emit('ambulance_location_update', {
+    # Notify both frontends about the updated route
+    socketio.emit('ambulance_route_update', {
         "ambulance_id": ambulance_id,
-        "latitude": latitude,
-        "longitude": longitude
+        "route": route_details["route"],  # Encoded polyline for rendering on the map
+        "duration": route_details["duration"],  
+        "distance": route_details["distance"]  
+    }, to=f"caller-{order.caller.phone_no}")
+
+    socketio.emit('ambulance_route_update', {
+        "ambulance_id": ambulance_id,
+        "route": route_details["route"],
+        "duration": route_details["duration"],
+        "distance": route_details["distance"]
     }, to=f"ambulance-{ambulance_id}")
 
     # Cache the updated location in Redis
-    redis_client.set(f"ambulance:{ambulance_id}:location", f"{latitude},{longitude}") #Saving the change cause we might need it later, idk
+    redis_client.set(f"ambulance:{ambulance_id}:location", f"{latitude},{longitude}")
 
-    # Return success response
-    return jsonify({"message": "Ambulance location updated successfully!"}), 200
+    return jsonify({
+        "message": "Ambulance location and route updated successfully!",
+        "route_details": route_details
+    }), 200
