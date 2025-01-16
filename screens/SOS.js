@@ -1,34 +1,94 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
-import { Appbar } from 'react-native-paper';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Alert } from 'react-native';
+import { io } from 'socket.io-client';
 import * as Location from 'expo-location';
+import axios from 'axios';
 
-const SOS = ({ navigation }) => { 
+const SOS = ({ navigation }) => {
   const [location, setLocation] = useState(null);
+  const [driverDetails, setDriverDetails] = useState(null); // State to store driver details
+  const socket = io('http://192.168.161.210:5000', { transports: ['websocket'] });
 
-  const getLocation = async () => {
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== "granted") {
-      alert("Location permission not granted");
-      return;
+  // Effect hook to handle socket connection and disconnection
+  useEffect(() => {
+    socket.connect();
+
+    socket.on("connect", () => {
+      console.log("Socket connected");
+      socket.emit('join_room', { room: 'caller-7418581672' });
+    });
+
+    socket.on("driver_details", (data) => {
+      console.log('Driver details received:', data);
+      setDriverDetails(data); // Save driver details when received
+    });
+
+    return () => {
+      socket.disconnect(); // Cleanup socket connection on unmount
+    };
+  }, []);
+
+  // Effect hook to navigate once driver details are available
+  useEffect(() => {
+    if (driverDetails && location) {
+      console.log("Driver details and location available, navigating...");
+      navigation.navigate('AmbTrack', {
+        driverDetails,
+        userLocation: location,
+      });
     }
-    const currlocation = await Location.getCurrentPositionAsync();
-    setLocation(currlocation.coords);
-    navigation.navigate('AmbTrack', { location: currlocation.coords }); // Navigate to AmbTrack with location
+  }, [driverDetails, location, navigation]);
+
+  const getLocationAndTriggerSOS = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        alert("Location permission not granted");
+        return;
+      }
+      const currlocation = await Location.getCurrentPositionAsync();
+      console.log("The currlocation : ----------------------------");
+      console.log(currlocation);
+
+      if (!currlocation.coords || !currlocation.coords.latitude || !currlocation.coords.longitude) {
+        Alert.alert('Error', 'Unable to fetch location coordinates.');
+        return;
+      }
+
+      console.log("The location :---------------------------------");
+      console.log(currlocation.coords);
+
+      setLocation(currlocation.coords);
+      console.log("Current location BEFORE API response:", currlocation);
+
+      const response = await axios.post('http://192.168.161.210:5000/caller/booking', {
+        caller_phone_no: '7418581672', // Replace with the actual phone number
+        latitude: currlocation.coords.latitude,
+        longitude: currlocation.coords.longitude,
+      });
+      console.log("Current location AFTER API response:", currlocation);
+
+      console.log("API Response:", response.data);
+      Alert.alert('Success', 'SOS triggered. An ambulance is on its way.');
+
+    } catch (error) {
+      console.log("Error:", error.message);
+      Alert.alert('Error', 'An error occurred while triggering the SOS.');
+    }
   };
 
   return (
     <>
-    <View style={styles.img_container}>
-      <Image
-              source={require('../assets/logo.png')} 
-              style={styles.image}
-              resizeMode="contain"
-            />
-    </View>
+      <View style={styles.img_container}>
+        <Image
+          source={require('../assets/logo.png')}
+          style={styles.image}
+          resizeMode="contain"
+        />
+      </View>
 
       <View style={styles.btn_container}>
-        <TouchableOpacity onPress={getLocation} style={styles.btn}>
+        <TouchableOpacity onPress={getLocationAndTriggerSOS} style={styles.btn}>
           <Image
             source={require('../assets/SOS_symbol.png')}
             style={styles.sos}
@@ -52,12 +112,12 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold', // Make the text bold
+    fontWeight: 'bold',
     marginBottom: 16,
   },
   btn: {
     borderRadius: 50,
-    overflow: 'hidden', // Ensures the ripple effect is contained within the image
+    overflow: 'hidden',
     alignItems: 'center',
   },
   sos: {
@@ -69,18 +129,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'center',
     paddingHorizontal: 20,
-    color: 'rgb(179, 176, 179)', // Light color for the description
+    color: 'rgb(179, 176, 179)',
   },
   image: {
     width: 200,
     height: 200,
-    top:30,
+    top: 30,
   },
   img_container: {
     justifyContent: 'center',
     alignItems: 'center',
-    paddingBottom:100,
+    paddingBottom: 100,
   },
 });
 
 export default SOS;
+

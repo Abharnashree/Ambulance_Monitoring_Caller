@@ -1,4 +1,5 @@
 from flask import Flask
+from flask_cors import CORS 
 from .extensions import db, sess, redis_client
 from .events import socketio
 from .views import main
@@ -8,18 +9,22 @@ from .route.esp32_routes import esp32
 from .route.driver_routes import driver
 from .route.auth_routes import auth
 import threading
-
+import logging
 def create_app():
   app = Flask(__name__)
   # print("created app")
+  CORS(app, resources={r"/*": {"origins": "*"}})  # Allow all origins
   
-  app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://root:password@localhost/sample'
-  #app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://root:@localhost/ambulance_db'
-  #app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:''@localhost/ambulance_monitoring'  #if you have used any other db name, changing here alone would suffice
+  
+  # app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://root:@localhost/ambulance_db'
+  app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:''@localhost/ambulance_monitoring'  #if you have used any other db name, changing here alone would suffice
   app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
   app.config['DEBUG'] = True
 
-  socketio.init_app(app)
+  # Initialize SocketIO with CORS
+  socketio.init_app(app, cors_allowed_origins="*")  # Allow all origins for socket connections
+  logging.getLogger('socketio').setLevel(logging.WARNING)  # Suppress socketio logs below WARNING
+  logging.getLogger('engineio').setLevel(logging.WARNING)
 
   db.init_app(app)    #coupling our app with db now to avoid circular import error
 

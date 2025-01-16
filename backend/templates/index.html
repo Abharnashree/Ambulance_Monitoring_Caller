@@ -6,17 +6,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>test</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js" integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA==" crossorigin="anonymous"></script>
-    <!-- <script src="https://cdn.socket.io/4.6.0/socket.io.min.js" integrity="sha384-c79GN5VsunZvi+Q/WObgk2in0CbZsHnjEqvFxC5DxHn9lTfNce2WW6h2pH6u/kF+" crossorigin="anonymous"></script> -->
 </head>
 <body>
     Dummy test
     <script>
-        const socket = io();
+        const socket = io('http://192.168.1.43:5000');  // Use localhost instead of 0.0.0.0
 
         socket.on('connect', function() {
             socket.emit('my event', {data: 'I\'m connected!'});
         });
-        
+
+        socket.on('join_room','caller-7418581672');
+        socket.on("driver_details", (data) => {
+            console.log('Driver details received:', data);
+            console.log('Driver Details:', data.message);
+        });
     </script>
 </body>
 </html>

@@ -5,6 +5,8 @@ from ..models import *
 from ..extensions import db, redis_client, socketio
 import requests
 import math 
+from flask_socketio import emit, join_room
+
 
 
 caller = Blueprint('caller', __name__)
@@ -56,11 +58,14 @@ def create_booking():
 
     # Emit details to both frontends using Socket.IO
     # Send driver details to the caller's frontend
-    # socketio.emit('driver_details', {
-    #     "driver_name": nearest_ambulance.driver_name,
-    #     "driver_phone": nearest_ambulance.driver_phone,
-    #     "vehicle_number": nearest_ambulance.vehicle_number
-    # }, to=f"caller-{caller_phone_no}")
+    socketio.emit('driver_details', {
+        "ambulance_id":nearest_ambulance.id,
+        "type": str(nearest_ambulance.type),
+        "route": route_details["route"],  
+        "duration": route_details["duration"],  
+        "distance": route_details["distance"] 
+
+    }, to=f"caller-{caller_phone_no}")
 
     # Send patient location to the ambulance driver's frontend
     socketio.emit('patient_location', {
@@ -73,12 +78,15 @@ def create_booking():
 
     return jsonify({
         "message": "Booking created successfully!",
-        "booking_details": {
-            "order_id": new_booking.order_id,
-            "caller_phone_no": caller_phone_no,
-            "ambulance_id": nearest_ambulance.id,
-            "date_time": new_booking.date_time.strftime("%Y-%m-%d %H:%M:%S")
-        }
+        # "booking_details": {
+        #     "order_id": new_booking.order_id,
+        #     "caller_phone_no": caller_phone_no,
+        #     "ambulance_id": nearest_ambulance.id,
+        #     "date_time": new_booking.date_time.strftime("%Y-%m-%d %H:%M:%S"),
+        #     "route": route_details["route"],  
+        #     "duration": route_details["duration"],  
+        #     "distance": route_details["distance"],
+        # }
     }), 201
 
 
@@ -97,7 +105,7 @@ def haversine_distance(lat1, lon1, lat2, lon2):
 def find_nearest_ambulance(caller_lat, caller_long):
     radius = 5  # Initial search radius in kilometers
     step = 5    # Increment step for the radius
-    max_radius = 50
+    max_radius = 1000
     nearest_ambulance = None
     shortest_distance = float('inf')
     
@@ -227,3 +235,18 @@ def update_ambulance_location():
         "message": "Ambulance location and route updated successfully!",
         "route_details": route_details
     }), 200
+
+@caller.route('/checking', methods=['POST'])
+def checking():
+    data=request.json
+    caller_phone_no=data.get('caller_phone_no')
+    print("Checking got called")
+    socketio.emit('driver_details', {
+        "message": "This is to see if it works"
+
+    }, to=f"caller-{caller_phone_no}")
+    return jsonify({
+        "message": "This is to check " + str(caller_phone_no),
+    }), 200
+
+

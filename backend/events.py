@@ -4,7 +4,7 @@ from flask_socketio import emit, join_room
 from .extensions import socketio
 
 # users = {}
-
+rooms = {}
 @socketio.on("connect")
 def handle_connect():
     print("Client connected!")
