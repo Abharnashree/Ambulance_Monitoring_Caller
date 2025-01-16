@@ -6,15 +6,16 @@ from .route.caller_routes import caller
 from .route.admin_routes import admin
 from .route.esp32_routes import esp32
 from .route.driver_routes import driver
+from .route.auth_routes import auth
 import threading
 
 def create_app():
   app = Flask(__name__)
   # print("created app")
   
-  
-  # app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://root:@localhost/ambulance_db'
-  app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:''@localhost/ambulance_monitoring'  #if you have used any other db name, changing here alone would suffice
+  app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://root:password@localhost/sample'
+  #app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://root:@localhost/ambulance_db'
+  #app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:''@localhost/ambulance_monitoring'  #if you have used any other db name, changing here alone would suffice
   app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
   app.config['DEBUG'] = True
 
@@ -31,6 +32,7 @@ def create_app():
   app.register_blueprint(esp32)
   app.register_blueprint(driver)
   app.register_blueprint(main)
+  app.register_blueprint(auth)
 
   sess.init_app(app)
 

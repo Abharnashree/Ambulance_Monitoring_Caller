@@ -3,6 +3,10 @@ from sqlalchemy.ext.associationproxy import association_proxy
 from .extensions import db
 from enum import Enum
 
+'''
+New column - password is added to Caller model
+'''
+
 class Order_status(Enum):
   PENDING =  "Pending"
   IN_PROGRESS = "In Progress"
@@ -49,12 +53,15 @@ class Ambulance(db.Model):
 
 class Caller(db.Model):
   phone_no = db.Column(db.String(10), primary_key=True)
+  password = db.Column(db.String(255))
   latitude = db.Column(db.Float)
   longitude = db.Column(db.Float)
   call_requests = db.relationship('Order', back_populates='caller')
  
   def __repr__(self):
     return f'<Caller : {self.phone_no}>'
-
-  def __init__(self, phone_no):
-    self.phone_no = phone_no
+  
+  def __init__(self, phone_no, password=None):
+        self.phone_no = phone_no
+        if password:
+            self.password = password
