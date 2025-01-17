@@ -79,13 +79,7 @@ const SOS = ({ navigation }) => {
 
   return (
     <>
-      <View style={styles.img_container}>
-        <Image
-          source={require('../assets/logo.png')}
-          style={styles.image}
-          resizeMode="contain"
-        />
-      </View>
+      
 
       <View style={styles.btn_container}>
         <TouchableOpacity onPress={getLocationAndTriggerSOS} style={styles.btn}>
@@ -95,7 +89,6 @@ const SOS = ({ navigation }) => {
             resizeMode="contain"
           />
         </TouchableOpacity>
-        <Text style={styles.title}>SOS Button</Text>
         <Text style={styles.description}>
           Press the SOS button to send an immediate distress signal. An ambulance will be dispatched to your location to provide assistance as quickly as possible.
         </Text>
@@ -107,7 +100,7 @@ const SOS = ({ navigation }) => {
 const styles = StyleSheet.create({
   btn_container: {
     flex: 1,
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
     alignItems: 'center',
   },
   title: {

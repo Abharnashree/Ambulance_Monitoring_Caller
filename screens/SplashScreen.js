@@ -3,13 +3,7 @@ import { View, StyleSheet, Image } from 'react-native';
 import { Text, Button } from 'react-native-paper';
 
 const SplashScreen = ({ navigation }) => {
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      navigation.navigate('Signup');
-    }, 3000);
-
-    return () => clearTimeout(timer);
-  }, [navigation]);
+ 
 
   return (
     <View style={styles.container}>

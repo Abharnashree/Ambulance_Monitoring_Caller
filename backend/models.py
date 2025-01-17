@@ -21,8 +21,8 @@ class Order(db.Model):
   caller = db.relationship('Caller', back_populates='call_requests')
 
   order_id = db.Column(db.Integer, primary_key=True)
-  ambulance_id = db.Column('ambulance_id', db.Integer, db.ForeignKey('ambulance.id'), nullable=False)
-  caller_phone_no = db.Column('caller_phone_no', db.String(10), db.ForeignKey('caller.phone_no'), nullable=False)
+  ambulance_id = db.Column( db.Integer, db.ForeignKey('ambulance.id'), nullable=False)
+  caller_phone_no = db.Column( db.String(10), db.ForeignKey('caller.phone_no'), nullable=False)
   date_time = db.Column(db.DateTime, default=datetime.now())
   order_status = db.Column(db.Enum(Order_status), default= Order_status.PENDING)
 
@@ -53,15 +53,12 @@ class Ambulance(db.Model):
 
 class Caller(db.Model):
   phone_no = db.Column(db.String(10), primary_key=True)
-  password = db.Column(db.String(255))
-  latitude = db.Column(db.Float)
-  longitude = db.Column(db.Float)
-  call_requests = db.relationship('Order', back_populates='caller')
+  name = db.Column(db.String(255))
+
  
   def __repr__(self):
     return f'<Caller : {self.phone_no}>'
   
-  def __init__(self, phone_no, password=None):
+  def __init__(self, phone_no, name):
         self.phone_no = phone_no
-        if password:
-            self.password = password
+        self.name = name

@@ -6,11 +6,12 @@ from ..extensions import db, redis_client, socketio
 import requests
 import math 
 from flask_socketio import emit, join_room
-
+from twilio.rest import Client
 
 
 caller = Blueprint('caller', __name__)
 gmaps = googlemaps.Client(key='AIzaSyDJfABDdpB7fIMs_F4e1IeqKoEQ2BSNSl0')
+
 
 
 @caller.route('/caller/booking', methods=['POST'])
