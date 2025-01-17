@@ -54,7 +54,7 @@ class Ambulance(db.Model):
 class Caller(db.Model):
   phone_no = db.Column(db.String(10), primary_key=True)
   name = db.Column(db.String(255))
-
+  call_requests = db.relationship('Order', back_populates='caller')
  
   def __repr__(self):
     return f'<Caller : {self.phone_no}>'
