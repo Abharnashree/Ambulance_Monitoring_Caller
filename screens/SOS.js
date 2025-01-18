@@ -46,7 +46,9 @@ const SOS = ({ navigation }) => {
         alert("Location permission not granted");
         return;
       }
-      const currlocation = await Location.getCurrentPositionAsync();
+      const currlocation = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Highest
+      });
       console.log("The currlocation : ----------------------------");
       console.log(currlocation);
 
@@ -61,7 +63,8 @@ const SOS = ({ navigation }) => {
       setLocation(currlocation.coords);
       console.log("Current location BEFORE API response:", currlocation);
 
-      const response = await axios.post('http://192.168.161.210:5000/caller/booking', {
+      const response = await axios.post('http://192.168.161.210:5000/caller/booking', { 
+        //use ipconfig and use your own ipv4 address for wifi
         caller_phone_no: '7418581672', // Replace with the actual phone number
         latitude: currlocation.coords.latitude,
         longitude: currlocation.coords.longitude,

@@ -35,8 +35,8 @@ class Order(db.Model):
 
 class Ambulance(db.Model):
   id = db.Column(db.Integer, primary_key = True)
-  latitude = db.Column(db.Float)
-  longitude = db.Column(db.Float)
+  latitude = db.Column(db.Double)
+  longitude = db.Column(db.Double)
   isAvailable = db.Column(db.Boolean)
   type = db.Column(db.Enum(Ambulance_type))
   attended_victims_association = db.relationship('Order', back_populates='ambulance')

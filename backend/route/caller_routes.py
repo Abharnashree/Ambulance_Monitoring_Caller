@@ -18,6 +18,7 @@ gmaps = googlemaps.Client(key='AIzaSyDJfABDdpB7fIMs_F4e1IeqKoEQ2BSNSl0')
 def create_booking():
     data = request.json
     caller_phone_no = data.get('caller_phone_no')
+
     caller_lat = data.get('latitude')
     caller_long = data.get('longitude')
 
@@ -28,7 +29,6 @@ def create_booking():
     caller = Caller.query.filter_by(phone_no=caller_phone_no).first()
     if not caller:
         return jsonify({"message": f"Caller with phone_no {caller_phone_no} does not exist!"}), 404
-
     # Find the nearest available ambulance
     nearest_ambulance = find_nearest_ambulance(caller_lat, caller_long)
 
