@@ -54,26 +54,37 @@ def init_db_with_dummy_data():
 
     response = requests.get(overpass_url, params={'data': overpass_query})
 
+    ambulances = []
+    hospitals = []
+
     if response.status_code == 200:
         data = response.json()
-        ambulances = []
         i = 1
 
+        #adding a few ambulances and hospitals for testing purpose to reduce the number of element-requests from 
+        #google maps api
         for element in data['elements']:
             if i % 46 != 0:
                 i += 1
                 continue
             ambulance = Ambulance(i, Ambulance_type.BASIC if i%3 != 0 else Ambulance_type.ADVANCED)
+            hospital = Hospital(element.get('tags', {}).get('name', 'Unknown'))
+
             if element['type'] == 'node':
                 ambulance.latitude = element['lat']
                 ambulance.longitude = element['lon']
+                hospital.latitude = ambulance.latitude
+                hospital.longitude = ambulance.longitude
             elif 'center' in element:
                 ambulance.latitude = element['center']['lat']
                 ambulance.longitude = element['center']['lon']
+                hospital.latitude = ambulance.latitude
+                hospital.longitude = ambulance.longitude
             else:
                 continue
             
             ambulances.append(ambulance)
+            hospitals.append(hospital)
             i += 1
     else:
         ambulances = [Ambulance(x, Ambulance_type.BASIC) for x in range(1,100)]
@@ -85,13 +96,15 @@ def init_db_with_dummy_data():
     db.session.add_all(ambulances)
     db.session.add_all(callers)
     db.session.add_all(orders)
+    db.session.add_all(hospitals)
     #The generation wont work, just type one caller manually for now 
 
     db.session.commit() 
     return jsonify({
         "ambulances": [ambulance.id for ambulance in ambulances],
         "callers": [caller.phone_no for caller in callers],
-        "orders" : [order.order_id for order in orders]
+        "orders" : [order.order_id for order in orders],
+        "hospitals": [hospital.name for hospital in hospitals]
     })
 
 @admin.route('/update_ambulance/<int:ambulance_id>', methods=['PUT'])

@@ -62,3 +62,15 @@ class Caller(db.Model):
   def __init__(self, phone_no, name):
         self.phone_no = phone_no
         self.name = name
+
+class Hospital(db.Model):
+  id = db.Column(db.Integer, primary_key=True)
+  name = db.Column(db.String(255))
+  latitude = db.Column(db.Double)
+  longitude = db.Column(db.Double)
+
+  def __init__(self, name):
+    self.name = name
+
+  def __repr__(self):
+    return f'<Hospital : {self.name}>'
