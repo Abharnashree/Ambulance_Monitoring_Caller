@@ -7,6 +7,9 @@ import requests
 from flask_socketio import emit, join_room
 from twilio.rest import Client
 from ..utlis import *
+from shapely.geometry import LineString
+from geoalchemy2.shape import from_shape
+import polyline
 
 
 caller = Blueprint('caller', __name__)
@@ -34,19 +37,12 @@ def create_booking():
         return jsonify({"message": "No available ambulance found nearby!"}), 404
 
 
-    new_booking = Order(
-        ambulance= nearest_ambulance,
-        caller=caller,
-        date_time=datetime.now(),
-        order_status=Order_status.IN_PROGRESS
-    )
-    db.session.add(new_booking)
-    nearest_ambulance.isAvailable = False  # Mark ambulance as unavailable
-    db.session.commit()
-
     route_details = get_route_with_directions(
         nearest_ambulance.latitude, nearest_ambulance.longitude, caller_lat, caller_long
     )
+
+    ambulance_caller_route = LineString(polyline.decode(route_details['route']))
+
     if route_details is not None:
         print("Route Details in Booking :\n")
         print(route_details) 
@@ -74,6 +70,17 @@ def create_booking():
         "duration": route_details["duration"],  
         "distance": route_details["distance"] 
     }, to=f"ambulance-{nearest_ambulance.id}")
+
+    new_booking = Order(
+        ambulance= nearest_ambulance,
+        caller=caller,
+        date_time=datetime.now(),
+        order_status=Order_status.IN_PROGRESS,
+        amb_caller_route = from_shape(ambulance_caller_route, srid=4326)
+    )
+    db.session.add(new_booking)
+    nearest_ambulance.isAvailable = False  # Mark ambulance as unavailable
+    db.session.commit()
 
     return jsonify({
         "message": "Booking created successfully!",
@@ -159,6 +166,8 @@ def update_ambulance_location():
     route_details = get_route_with_directions(latitude, longitude, caller_lat, caller_long)
     if not route_details:
         return jsonify({"message": "Unable to fetch route details!"}), 500
+
+    
 
     # Notify both frontends about the updated route
     socketio.emit('ambulance_route_update', {

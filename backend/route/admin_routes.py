@@ -2,6 +2,9 @@ from flask import Blueprint, request, jsonify, render_template
 import requests
 from ..models import *
 from ..extensions import db
+from geoalchemy2.shape import from_shape
+from shapely.geometry import Point
+from datetime import datetime
 
 admin = Blueprint('admin', __name__)
 
@@ -41,13 +44,14 @@ def add_ambulance():
 def init_db_with_dummy_data():
     db.create_all()
     overpass_url = "https://overpass-api.de/api/interpreter"
+    CHENNAI_BBOX = "13.0,80.0,13.1,80.3"
 
-    overpass_query = """
+    overpass_query = f"""
     [out:json];
     (
-    node["amenity"="hospital"](13.0000,80.2000,13.2000,80.4000);
-    way["amenity"="hospital"](13.0000,80.2000,13.2000,80.4000);
-    relation["amenity"="hospital"](13.0000,80.2000,13.2000,80.4000);
+    node["amenity"="hospital"]({CHENNAI_BBOX});
+    way["amenity"="hospital"]({CHENNAI_BBOX});
+    relation["amenity"="hospital"]({CHENNAI_BBOX});
     );
     out center;
     """
@@ -92,12 +96,35 @@ def init_db_with_dummy_data():
         
     callers = [Caller(str(x), "Bob") for x in range(9_120_356_632, 9_999_999_999, 1_032_789)]
     orders = [Order(amb, caller) for amb, caller in zip(ambulances[1:100:4], callers[11:555:23])]
+
+    overpass_query = f"""
+    [out:json];
+    (
+    node["highway"="traffic_signals"]({CHENNAI_BBOX});
+    );
+    out body;
+    """ 
+
+    response = requests.get(overpass_url, params={'data': overpass_query})
+
+    if response.status_code == 200:
+        data = response.json()
+        for element in data['elements']:
+            if element['type'] == 'node':
+                lat = element['lat']
+                lon = element['lon']
+                point_geom = from_shape(Point(lon, lat), srid=4326)  # Create POINT geometry
+                traffic_light = TrafficLight(
+                    id = element['id'],
+                    name = element['tags'].get('name', "Traffic signal"),
+                    location=point_geom
+                )
+                db.session.add(traffic_light)
     
     db.session.add_all(ambulances)
     db.session.add_all(callers)
     db.session.add_all(orders)
     db.session.add_all(hospitals)
-    #The generation wont work, just type one caller manually for now 
 
     db.session.commit() 
     return jsonify({

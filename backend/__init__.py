@@ -16,9 +16,9 @@ def create_app():
   # print("created app")
   CORS(app, resources={r"/*": {"origins": "*"}})  # Allow all origins
   
-  
-  app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://root:@localhost/ambulance_db'
-  #app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:''@localhost/ambulance_monitoring'  #if you have used any other db name, changing here alone would suffice
+  app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:password@localhost/ambulance_monitoring'
+  # app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://root:@localhost/ambulance_db'
+  # app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:''@localhost/ambulance_monitoring'  #if you have used any other db name, changing here alone would suffice
   app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
   app.config['DEBUG'] = True
 
