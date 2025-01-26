@@ -1,19 +1,101 @@
-import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { View, StyleSheet, Platform } from 'react-native';
 import { Text, TextInput, Button } from 'react-native-paper';
+import axios from 'axios';
 
-const SignupScreen = ({navigation}) => {
+
+
+
+const SignupScreen = ({ navigation }) => {
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [info, setInfo] = useState('');
+  const[sent, setSent] = useState(false);
+  const[verificationCode, setVerificationCode] = useState('');
+  const[name, setName]=useState('');
+
+  const handleSendVerificationCode = async () => {
+    try {
+      const response = await axios.post('http://192.168.113.158:5000/sendOtp',{
+        phoneNumber,
+      });
+      if (response.data.status === 'OTP sent') {
+        setInfo('Success: Verification code has been sent to your phone');
+        setSent(true); 
+      } else {
+        setInfo('Error: Failed to send OTP');
+      }
+    } catch (error) {
+      console.error(error);
+      setInfo(`Error: ${error.response?.data?.error || error.message}`);
+    }
+  };
+
+  const handleVerifyVerificationCode = async () => {
+    try {
+      const response = await axios.post('http://192.168.113.158:5000/verifyOtp',{
+        verificationCode,
+      });
+      if (response.data.status === 'success') {
+        setInfo('Signed in successfully');
+        console.log(name, phoneNumber);
+      } else {
+        setInfo('Error: verification failed');
+      }
+    } catch (error) {
+      console.error(error);
+      setInfo(`Error: ${error.response?.data?.error || error.message}`);
+    }
+  };
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Sign Up</Text> 
-      <TextInput label="Name" style={styles.input} />
-      <TextInput label="Phone Number" keyboardType="phone-pad" style={styles.input} />
-      <TextInput label="Emergency Contact" keyboardType="phone-pad" style={styles.input} />
-      <Button mode="contained" 
-      style={styles.button}
-      onPress={() => navigation.navigate('SOS')}>
-        Register
-      </Button>
+      {info && <Text style={styles.infoText}>{info}</Text>}
+      {!sent && (
+        <View style={styles.inputContainer}>
+          <Text style={styles.labelText}>Enter name: </Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter name"
+            onChangeText={setName}
+          />
+
+          <Text style={styles.labelText}>Enter the phone number:</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter number"
+            onChangeText={setPhoneNumber}
+          />
+
+          <Button
+            style={styles.button}
+            mode="contained"
+            onPress={handleSendVerificationCode}
+            disabled={!phoneNumber.trim()}
+          >
+            Send Verification Code
+          </Button>
+        </View>
+      )}
+      {sent && (
+        <View style={styles.inputContainer}>
+          <Text style={styles.labelText}>Enter the verification code:</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="123456"
+            mode="outlined"
+            keyboardType="number-pad"
+            onChangeText={setVerificationCode}
+          />
+          <Button
+            style={styles.button}
+            mode="contained"
+            onPress={handleVerifyVerificationCode}
+            disabled={!verificationCode.trim()}
+          >
+            Confirm Verification Code
+          </Button>
+        </View>
+      )}
     </View>
   );
 };
@@ -21,23 +103,29 @@ const SignupScreen = ({navigation}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
+    backgroundColor: '#fff',
     justifyContent: 'center',
-    backgroundColor: '#ffffff',
+    padding: 20,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
+  inputContainer: {
     marginBottom: 20,
-    textAlign: 'center',
+  },
+  labelText: {
+    fontSize: 16,
+    marginBottom: 10,
+    color: '#333',
   },
   input: {
-    marginBottom: 15,
-    backgroundColor: '#f5f5f5',
+    marginBottom: 20,
   },
   button: {
-    marginTop: 20,
-    backgroundColor: '#1E88E5',
+    marginTop: 10,
+  },
+  infoText: {
+    fontSize: 14,
+    color: '#ff0000',
+    textAlign: 'center',
+    marginBottom: 20,
   },
 });
 
