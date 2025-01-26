@@ -29,16 +29,19 @@ class Order(db.Model):
   date_time = db.Column(db.DateTime, default=datetime.now())
   order_status = db.Column(db.Enum(Order_status), default= Order_status.PENDING)
 
+  traffic_light_intersection = db.Column(db.ARRAY(db.String(20)))
   amb_caller_route = db.Column(Geometry(geometry_type='LINESTRING', srid=4326), nullable=True, default='LINESTRING()')
   caller_hospital_route = db.Column(Geometry(geometry_type='LINESTRING', srid=4326), nullable=True, default='LINESTRING()')
+  
 
-  def __init__(self, ambulance, caller, date_time=datetime.now(), order_status=Order_status.PENDING, amb_caller_route='LINESTRING(0 0, 1 0)', caller_hospital_route='LINESTRING(0 0, 1 0)'):
+  def __init__(self, ambulance, caller, date_time=datetime.now(), order_status=Order_status.PENDING, amb_caller_route='LINESTRING(0 0, 1 0)', caller_hospital_route='LINESTRING(0 0, 1 0)', traffic_light_intersection=[]):
     self.ambulance = ambulance
     self.caller = caller
     self.date_time = date_time
     self.order_status = order_status
     self.amb_caller_route = amb_caller_route
     self.caller_hospital_route = caller_hospital_route
+    self.traffic_light_intersection = traffic_light_intersection
 
 class Ambulance(db.Model):
   id = db.Column(db.Integer, primary_key = True)

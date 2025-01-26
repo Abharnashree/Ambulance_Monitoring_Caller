@@ -4,6 +4,11 @@ from ..extensions import db, redis_client, socketio
 import datetime
 import googlemaps
 from ..utlis import *
+from shapely.geometry import LineString
+from geoalchemy2.shape import from_shape
+from geoalchemy2.functions import ST_GeomFromText, ST_DWithin, ST_Intersects, ST_Segmentize, ST_Transform, ST_AsText
+import polyline
+
 driver = Blueprint('driver', __name__)
 gmaps = googlemaps.Client(key='AIzaSyDJfABDdpB7fIMs_F4e1IeqKoEQ2BSNSl0')
 """
@@ -151,6 +156,7 @@ def find_nearest_hospital(caller_lat, caller_long):
 @driver.route('/ambulance/nearest_hospital', methods=['POST'])
 def find_nearest_hospital_and_route():
     data = request.json
+    order_id = data.get('order_id')
     ambulance_lat = data.get('latitude')
     ambulance_long = data.get('longitude')
 
@@ -168,10 +174,27 @@ def find_nearest_hospital_and_route():
         ambulance_lat, ambulance_long,
         nearest_hospital.latitude, nearest_hospital.longitude
     )
+
     if hospital_route_details is None:
         return jsonify({"message": "No route generated to hospital!"}), 400
     
-    
+    caller_hospital_route = LineString(polyline.decode(hospital_route_details['route']))
+
+    route = ST_Segmentize(from_shape(caller_hospital_route, srid=4326), 0.0001)
+
+    intersection = TrafficLight.query.filter(
+        ST_DWithin(
+            ST_Transform(TrafficLight.location, 3857),
+            ST_Transform(route, 3857),
+            10 # within 10 meters
+        )
+    ).all()
+
+    order = Order.query.filter_by(order_id=order_id).first()
+    order.traffic_light_intersection = [traffic_light.id for traffic_light in intersection]
+    order.caller_hospital_route = from_shape(caller_hospital_route, srid=4326)
+
+    db.session.commit()
 
     # Return the nearest hospital details and the route information
     return jsonify({

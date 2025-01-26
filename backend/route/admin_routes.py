@@ -3,7 +3,10 @@ import requests
 from ..models import *
 from ..extensions import db
 from geoalchemy2.shape import from_shape
+from geoalchemy2.functions import ST_GeomFromText, ST_DWithin, ST_Intersects, ST_Segmentize, ST_Transform, ST_AsText
 from shapely.geometry import Point
+from shapely.wkb import loads
+import binascii
 from datetime import datetime
 
 admin = Blueprint('admin', __name__)
@@ -18,6 +21,34 @@ Update ambulance - update_ambulance
 @admin.route("/", methods=['GET'])
 def index():
     return render_template("index.html")
+
+@admin.route("/test", methods=['GET', 'Post'])
+def test():
+    order = Order.query.filter_by(order_id=2).first()  #update the order id for your testing
+    print(order.amb_caller_route)
+    route = ST_Segmentize(order.amb_caller_route, 0.0001)
+
+    intersection = TrafficLight.query.filter(
+        ST_DWithin(
+            ST_Transform(TrafficLight.location, 3857),
+            ST_Transform(route, 3857),
+            10 # within 50 meters
+        )
+    ).all()
+
+    print(type(intersection))
+
+    result = []
+    for traffic_light in intersection:
+        print(traffic_light.id)
+        result.append(traffic_light.id)
+        print(traffic_light.name)
+        point = loads(binascii.unhexlify(str(traffic_light.location)))
+        print(f'{point.x}, {point.y}')
+
+    print(len(result))
+
+    return jsonify("done")
 
 @admin.route('/add_ambulance', methods=['POST'])
 def add_ambulance():
@@ -113,13 +144,16 @@ def init_db_with_dummy_data():
             if element['type'] == 'node':
                 lat = element['lat']
                 lon = element['lon']
-                point_geom = from_shape(Point(lon, lat), srid=4326)  # Create POINT geometry
+                point_geom = f'POINT({lat} {lon})'  # Create POINT geometry
                 traffic_light = TrafficLight(
                     id = element['id'],
                     name = element['tags'].get('name', "Traffic signal"),
-                    location=point_geom
+                    location=ST_GeomFromText(point_geom, srid=4326)
                 )
                 db.session.add(traffic_light)
+
+
+    
     
     db.session.add_all(ambulances)
     db.session.add_all(callers)

@@ -9,6 +9,7 @@ from twilio.rest import Client
 from ..utlis import *
 from shapely.geometry import LineString
 from geoalchemy2.shape import from_shape
+from geoalchemy2.functions import ST_GeomFromText, ST_DWithin, ST_Intersects, ST_Segmentize, ST_Transform, ST_AsText
 import polyline
 
 
@@ -19,7 +20,6 @@ gmaps = googlemaps.Client(key='AIzaSyDJfABDdpB7fIMs_F4e1IeqKoEQ2BSNSl0')
 def create_booking():
     data = request.json
     caller_phone_no = data.get('caller_phone_no')
-
     caller_lat = data.get('latitude')
     caller_long = data.get('longitude')
 
@@ -30,26 +30,25 @@ def create_booking():
     caller = Caller.query.filter_by(phone_no=caller_phone_no).first()
     if not caller:
         return jsonify({"message": f"Caller with phone_no {caller_phone_no} does not exist!"}), 404
+
     # Find the nearest available ambulance
     nearest_ambulance = find_nearest_ambulance(caller_lat, caller_long)
-
     if not nearest_ambulance:
         return jsonify({"message": "No available ambulance found nearby!"}), 404
-
 
     route_details = get_route_with_directions(
         nearest_ambulance.latitude, nearest_ambulance.longitude, caller_lat, caller_long
     )
-
-    ambulance_caller_route = LineString(polyline.decode(route_details['route']))
 
     if route_details is not None:
         print("Route Details in Booking :\n")
         print(route_details) 
     else:
         return jsonify({
-                "message":"No Route Details generated",
-                }), 400
+            "message":"No Route Details generated",
+        }), 400
+
+    ambulance_caller_route = LineString(polyline.decode(route_details['route']))
 
     # Emit details to both frontends using Socket.IO
     # Send driver details to the caller's frontend
@@ -71,12 +70,23 @@ def create_booking():
         "distance": route_details["distance"] 
     }, to=f"ambulance-{nearest_ambulance.id}")
 
+    route = ST_Segmentize(from_shape(ambulance_caller_route, srid=4326), 0.0001)
+
+    intersection = TrafficLight.query.filter(
+        ST_DWithin(
+            ST_Transform(TrafficLight.location, 3857),
+            ST_Transform(route, 3857),
+            10 # within 10 meters
+        )
+    ).all()
+
     new_booking = Order(
         ambulance= nearest_ambulance,
         caller=caller,
         date_time=datetime.now(),
         order_status=Order_status.IN_PROGRESS,
-        amb_caller_route = from_shape(ambulance_caller_route, srid=4326)
+        amb_caller_route = from_shape(ambulance_caller_route, srid=4326),
+        traffic_light_intersection = [str(traffic_light.id) for traffic_light in intersection]
     )
     db.session.add(new_booking)
     nearest_ambulance.isAvailable = False  # Mark ambulance as unavailable
