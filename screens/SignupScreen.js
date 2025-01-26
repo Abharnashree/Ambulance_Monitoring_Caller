@@ -1,64 +1,71 @@
 import React, { useRef, useState } from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
 import { Text, TextInput, Button } from 'react-native-paper';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
 
 
-const app = getApp();
-const auth = initializeAuth(app, {
-  persistence: getReactNativePersistence(AsyncStorage),
-});
-
-if (!app?.options || Platform.OS === 'web') {
-  throw new Error('This example only works on Android or iOS and requires a valid Firebase config.');
-}
 
 const SignupScreen = ({ navigation }) => {
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [verificationId, setVerificationID] = useState('');
-  const [verificationCode, setVerificationCode] = useState('');
   const [info, setInfo] = useState('');
-  const attemptInvisibleVerification = false;
+  const[sent, setSent] = useState(false);
+  const[verificationCode, setVerificationCode] = useState('');
+  const[name, setName]=useState('');
 
   const handleSendVerificationCode = async () => {
     try {
-      const number = phoneNumber;
-      const response = axios.post('http://0.0.0.0:5000/sendOtp',{
-        phoneNumber:number,
-      })
-
-      console.log(response.data);
-      setInfo('Success: Verification code has been sent to your phone');
+      const response = await axios.post('http://192.168.113.158:5000/sendOtp',{
+        phoneNumber,
+      });
+      if (response.data.status === 'OTP sent') {
+        setInfo('Success: Verification code has been sent to your phone');
+        setSent(true); 
+      } else {
+        setInfo('Error: Failed to send OTP');
+      }
     } catch (error) {
-      setInfo(`Error: ${error.message}`);
-      setInfo(`Error: ${error.message}`);
+      console.error(error);
+      setInfo(`Error: ${error.response?.data?.error || error.message}`);
     }
   };
 
   const handleVerifyVerificationCode = async () => {
     try {
-      const credential = PhoneAuthProvider.credential(verificationId, verificationCode);
-      await signInWithCredential(auth, credential);
-      setInfo('Success: Phone authentication successful');
-      navigation.navigate('Welcome');
+      const response = await axios.post('http://192.168.113.158:5000/verifyOtp',{
+        verificationCode,
+      });
+      if (response.data.status === 'success') {
+        setInfo('Signed in successfully');
+        console.log(name, phoneNumber);
+      } else {
+        setInfo('Error: verification failed');
+      }
     } catch (error) {
-      setInfo(`Error: ${error.message}`);
+      console.error(error);
+      setInfo(`Error: ${error.response?.data?.error || error.message}`);
     }
   };
 
   return (
     <View style={styles.container}>
       {info && <Text style={styles.infoText}>{info}</Text>}
-      {!verificationId && (
+      {!sent && (
         <View style={styles.inputContainer}>
+          <Text style={styles.labelText}>Enter name: </Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter name"
+            onChangeText={setName}
+          />
+
           <Text style={styles.labelText}>Enter the phone number:</Text>
           <TextInput
             style={styles.input}
             placeholder="Enter number"
             onChangeText={setPhoneNumber}
           />
+
           <Button
             style={styles.button}
             mode="contained"
@@ -69,7 +76,7 @@ const SignupScreen = ({ navigation }) => {
           </Button>
         </View>
       )}
-      {verificationId && (
+      {sent && (
         <View style={styles.inputContainer}>
           <Text style={styles.labelText}>Enter the verification code:</Text>
           <TextInput

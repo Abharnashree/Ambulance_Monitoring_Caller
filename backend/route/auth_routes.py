@@ -61,6 +61,9 @@ def verify_otp():
             otp_time = session.get('otp_time', 0)
             current_time = time.time()
             if current_time - otp_time <= 120:
+ 
+# ADD CODE TO STORE USER DETAILS IN BACKEND 
+
                 #We can collect user data directly from session
                 # user_details = session.get('user_data')
     
