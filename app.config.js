@@ -16,7 +16,12 @@ export default{
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyDJfABDdpB7fIMs_F4e1IeqKoEQ2BSNSl0"
+        }
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -28,7 +33,12 @@ export default{
         "ACCESS_COARSE_LOCATION"
       ],
       "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyDJfABDdpB7fIMs_F4e1IeqKoEQ2BSNSl0"
+        }
       }
+    },
+    "config":  {
     },
     "web": {
       "favicon": "./assets/favicon.png"

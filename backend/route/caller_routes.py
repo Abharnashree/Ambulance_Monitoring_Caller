@@ -4,20 +4,22 @@ import googlemaps
 from ..models import *
 from ..extensions import db, redis_client, socketio
 import requests
-import math 
 from flask_socketio import emit, join_room
 from twilio.rest import Client
+from ..utlis import *
+from shapely.geometry import LineString
+from geoalchemy2.shape import from_shape
+import polyline
 
 
 caller = Blueprint('caller', __name__)
 gmaps = googlemaps.Client(key='AIzaSyDJfABDdpB7fIMs_F4e1IeqKoEQ2BSNSl0')
 
-
-
 @caller.route('/caller/booking', methods=['POST'])
 def create_booking():
     data = request.json
     caller_phone_no = data.get('caller_phone_no')
+
     caller_lat = data.get('latitude')
     caller_long = data.get('longitude')
 
@@ -28,7 +30,6 @@ def create_booking():
     caller = Caller.query.filter_by(phone_no=caller_phone_no).first()
     if not caller:
         return jsonify({"message": f"Caller with phone_no {caller_phone_no} does not exist!"}), 404
-
     # Find the nearest available ambulance
     nearest_ambulance = find_nearest_ambulance(caller_lat, caller_long)
 
@@ -36,19 +37,12 @@ def create_booking():
         return jsonify({"message": "No available ambulance found nearby!"}), 404
 
 
-    new_booking = Order(
-        ambulance= nearest_ambulance,
-        caller=caller,
-        date_time=datetime.now(),
-        order_status=Order_status.IN_PROGRESS
-    )
-    db.session.add(new_booking)
-    nearest_ambulance.isAvailable = False  # Mark ambulance as unavailable
-    db.session.commit()
-
     route_details = get_route_with_directions(
         nearest_ambulance.latitude, nearest_ambulance.longitude, caller_lat, caller_long
     )
+
+    ambulance_caller_route = LineString(polyline.decode(route_details['route']))
+
     if route_details is not None:
         print("Route Details in Booking :\n")
         print(route_details) 
@@ -77,6 +71,17 @@ def create_booking():
         "distance": route_details["distance"] 
     }, to=f"ambulance-{nearest_ambulance.id}")
 
+    new_booking = Order(
+        ambulance= nearest_ambulance,
+        caller=caller,
+        date_time=datetime.now(),
+        order_status=Order_status.IN_PROGRESS,
+        amb_caller_route = from_shape(ambulance_caller_route, srid=4326)
+    )
+    db.session.add(new_booking)
+    nearest_ambulance.isAvailable = False  # Mark ambulance as unavailable
+    db.session.commit()
+
     return jsonify({
         "message": "Booking created successfully!",
         # "booking_details": {
@@ -89,18 +94,6 @@ def create_booking():
         #     "distance": route_details["distance"],
         # }
     }), 201
-
-
-def haversine_distance(lat1, lon1, lat2, lon2):
-    # Calculate the great-circle distance between two points on the Earth
-    R = 6371  # Radius of Earth in kilometers
-    lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
-    dlat = lat2 - lat1
-    dlon = lon2 - lon1
-    a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    return R * c
-
 
 # Function to find nearest ambulance
 def find_nearest_ambulance(caller_lat, caller_long):
@@ -145,46 +138,6 @@ def find_nearest_ambulance(caller_lat, caller_long):
 
     return nearest_ambulance
 
-#This function uses Directions API to get the route 
-def get_route_with_directions(origin_lat, origin_long, dest_lat, dest_long):
-    try:
-        # Request directions from Google Maps API
-        result = gmaps.directions(
-            origin=(origin_lat, origin_long),
-            destination=(dest_lat, dest_long),
-            mode="driving",
-            traffic_model="best_guess",  # Use real-time traffic data
-            departure_time="now"  # Get traffic details for the current time
-        )
-        print("get_route_with_directions: \n")
-        print(result)
-        if result and result[0]:
-            # Extract route details
-            route = result[0]['overview_polyline']['points']  # Encoded polyline for the route
-            legs = result[0]['legs'][0]
-            duration = legs['duration']['text']  # Total travel time (e.g., "25 mins")
-            distance = legs['distance']['text']  # Total distance (e.g., "10.5 km")
-
-            # Get step-by-step directions for turn-by-turn guidance, Let this just be over here for now 
-            # steps = []
-            # for step in legs['steps']:
-            #     directions = step['html_instructions']  # Direction instruction (e.g., "Turn left onto Main St.")
-            #     steps.append(directions)
-
-            return {
-                "route": route,
-                "duration": duration,
-                "distance": distance,
-                #"steps": steps
-            }
-        else:
-            return None
-    except Exception as e:
-        print("Error fetching directions:", str(e))
-        return None
-
-
-
 #This update the screen of the users if any movement is noticed from the driver 
 @caller.route('/ambulance/location/update', methods=['POST'])
 def update_ambulance_location():
@@ -214,6 +167,8 @@ def update_ambulance_location():
     if not route_details:
         return jsonify({"message": "Unable to fetch route details!"}), 500
 
+    
+
     # Notify both frontends about the updated route
     socketio.emit('ambulance_route_update', {
         "ambulance_id": ambulance_id,
@@ -237,17 +192,17 @@ def update_ambulance_location():
         "route_details": route_details
     }), 200
 
-@caller.route('/checking', methods=['POST'])
-def checking():
-    data=request.json
-    caller_phone_no=data.get('caller_phone_no')
-    print("Checking got called")
-    socketio.emit('driver_details', {
-        "message": "This is to see if it works"
+# @caller.route('/checking', methods=['POST'])
+# def checking():
+#     data=request.json
+#     caller_phone_no=data.get('caller_phone_no')
+#     print("Checking got called")
+#     socketio.emit('driver_details', {
+#         "message": "This is to see if it works"
 
-    }, to=f"caller-{caller_phone_no}")
-    return jsonify({
-        "message": "This is to check " + str(caller_phone_no),
-    }), 200
+#     }, to=f"caller-{caller_phone_no}")
+#     return jsonify({
+#         "message": "This is to check " + str(caller_phone_no),
+#     }), 200
 
 

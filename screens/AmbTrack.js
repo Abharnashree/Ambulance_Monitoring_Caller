@@ -1,87 +1,113 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { Text } from 'react-native-paper';
-import MapView, { Marker, UrlTile, Polyline } from 'react-native-maps';
-import { StyleSheet, View, ActivityIndicator } from 'react-native';
-import axios from 'axios';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { Marker, Polyline } from 'react-native-maps';
+import MapView from 'react-native-maps';
+import polyline from '@mapbox/polyline';
+import io from 'socket.io-client';
 import BottomSheetComponent from '../components/BottomSheetComponent';
-const AmbTrack = ({ route }) => {
-  const { location } = route.params;
-  const [ambulance, setAmbulance] = useState({
-    latitude: 13.020078,
-    longitude: 80.224613,
-    time: 5,
-    dist: 1.5,
-    speed: 10,
+
+const AmbTrack = () => {
+  const [ambulanceDetails, setAmbulanceDetails] = useState({
+    ambulance_id: 1614,
+    distance: '3.0 km',
+    duration: '8 mins',
+    route: 'grygAwlbfNhES@AFCPBJH@FIPCBA@Cv@Y~JGPHnCLhCJlBVfGHhCL\\?^RrEDpANdENrEX~FTbH@nI?`HGzGEtMEbJsC@uAFgMZmA@Co@',
+    type: 'Ambulance_type.BASIC',
+    latitude: 11.931972855798419,
+    longitude: 79.80786230938979,
   });
-  const [routeCoordinates, setRouteCoordinates] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+
+  const userLocation = {
+    latitude: 11.934842145143234,
+    longitude: 79.78588598212839,
+  };
+
+  const [decodedPolyline, setDecodedPolyline] = useState([]);
+  const [mapLoaded, setMapLoaded] = useState(false);
   const bottomSheetRef = useRef(null);
+  const socket = useRef(null);
 
-  const fetchRoute = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const response = await axios.get('https://api.openrouteservice.org/v2/directions/driving-car', {
-        params: {
-          api_key: '5b3ce3597851110001cf62483361e889f60c484292407670b3cadcb2',
-          start: `${location.longitude},${location.latitude}`,
-          end: `${ambulance.longitude},${ambulance.latitude}`,
-        },
-      });
-      const coordinates = response.data.features[0].geometry.coordinates.map(coord => ({
-        latitude: coord[1],
-        longitude: coord[0],
-      }));
-      setRouteCoordinates(coordinates);
-    } catch (error) {
-      console.error('Error fetching route:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [location, ambulance]);
-
+  // Decode polyline whenever the route changes
   useEffect(() => {
-    fetchRoute();
-  }, [fetchRoute]);
+    if (ambulanceDetails.route) {
+      const decoded = polyline.decode(ambulanceDetails.route).map((coord) => ({
+        latitude: coord[0],
+        longitude: coord[1],
+      }));
+      setDecodedPolyline(decoded);
+    }
+  }, [ambulanceDetails.route]);
 
-  const handleSheetChanges = useCallback((index) => {
-    console.log('handleSheetChanges', index);
+  // Initialize Socket.IO connection
+  useEffect(() => {
+    socket.current = io("http://192.168.161.210:5000"); // Replace with your IPv4 wifi URL
+    socket.current.on("connect", () => {
+      console.log("Connected to server");
+    });
+
+    
+    socket.current.on("ambulance_route_update", (data) => {
+      console.log("Route update received:", data);
+      setAmbulanceDetails((prevDetails) => ({
+        ...prevDetails,
+        ...data, // Update route, distance, duration, etc.
+      }));
+    });
+
+    return () => {
+      // Clean up the socket connection on component unmount
+      socket.current.disconnect();
+    };
   }, []);
+
+  const handleMapLayout = () => {
+    setMapLoaded(true);
+  };
+
+  const handleSheetChanges = (index) => {
+    console.log("BottomSheet position changed to: ", index);
+  };
 
   return (
     <View style={styles.container}>
-      {isLoading && (
-        <View style={styles.loader}>
-          <ActivityIndicator size="large" color="#0000ff" />
-        </View>
-      )}
       <MapView
         style={styles.map}
-        initialRegion={{
-          latitude: location.latitude,
-          longitude: location.longitude,
+        onLayout={handleMapLayout}
+        region={{
+          latitude: ambulanceDetails.latitude,
+          longitude: ambulanceDetails.longitude,
           latitudeDelta: 0.0922,
           longitudeDelta: 0.0421,
         }}
       >
-        <UrlTile
-          urlTemplate="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          zIndex={0}
+        <Marker
+          coordinate={{
+            latitude: userLocation.latitude,
+            longitude: userLocation.longitude,
+          }}
+          title="Your Location"
         />
-        <Marker coordinate={{ latitude: location.latitude, longitude: location.longitude }} />
-        <Marker coordinate={{ latitude: ambulance.latitude, longitude: ambulance.longitude }} />
-        {routeCoordinates.length > 0 && (
-          <Polyline
-            coordinates={routeCoordinates}
-            strokeWidth={3}
-            strokeColor="black"
-          />
+
+        <Marker
+          coordinate={{
+            latitude: ambulanceDetails.latitude,
+            longitude: ambulanceDetails.longitude,
+          }}
+          title="Ambulance Location"
+          description={`Ambulance ID: ${ambulanceDetails.ambulance_id}, Type: ${ambulanceDetails.type}`}
+        />
+        {decodedPolyline.length > 0 && (
+          <Polyline coordinates={decodedPolyline} strokeWidth={3} strokeColor="red" />
         )}
       </MapView>
-      <BottomSheetComponent 
-        bottomSheetRef={bottomSheetRef} 
-        ambulance={ambulance} 
-        handleSheetChanges={handleSheetChanges} 
-      />
+
+      {mapLoaded && (
+        <BottomSheetComponent
+          bottomSheetRef={bottomSheetRef}
+          ambulance={ambulanceDetails}
+          handleSheetChanges={handleSheetChanges}
+        />
+      )}
     </View>
   );
 };
@@ -92,14 +118,7 @@ const styles = StyleSheet.create({
   },
   map: {
     width: '100%',
-    height: '85%',
-  },
-  loader: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    transform: [{ translateX: -20 }, { translateY: -20 }],
-    zIndex: 10,
+    height: '100%',
   },
 });
 

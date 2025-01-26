@@ -2,6 +2,9 @@ from flask import Blueprint, request, jsonify, render_template
 import requests
 from ..models import *
 from ..extensions import db
+from geoalchemy2.shape import from_shape
+from shapely.geometry import Point
+from datetime import datetime
 
 admin = Blueprint('admin', __name__)
 
@@ -41,56 +44,94 @@ def add_ambulance():
 def init_db_with_dummy_data():
     db.create_all()
     overpass_url = "https://overpass-api.de/api/interpreter"
+    CHENNAI_BBOX = "13.0,80.0,13.1,80.3"
 
-    overpass_query = """
+    overpass_query = f"""
     [out:json];
     (
-    node["amenity"="hospital"](13.0000,80.2000,13.2000,80.4000);
-    way["amenity"="hospital"](13.0000,80.2000,13.2000,80.4000);
-    relation["amenity"="hospital"](13.0000,80.2000,13.2000,80.4000);
+    node["amenity"="hospital"]({CHENNAI_BBOX});
+    way["amenity"="hospital"]({CHENNAI_BBOX});
+    relation["amenity"="hospital"]({CHENNAI_BBOX});
     );
     out center;
     """
 
     response = requests.get(overpass_url, params={'data': overpass_query})
 
+    ambulances = []
+    hospitals = []
+
     if response.status_code == 200:
         data = response.json()
-        ambulances = []
         i = 1
 
+        #adding a few ambulances and hospitals for testing purpose to reduce the number of element-requests from 
+        #google maps api
         for element in data['elements']:
             if i % 46 != 0:
                 i += 1
                 continue
             ambulance = Ambulance(i, Ambulance_type.BASIC if i%3 != 0 else Ambulance_type.ADVANCED)
+            hospital = Hospital(element.get('tags', {}).get('name', 'Unknown'))
+
             if element['type'] == 'node':
                 ambulance.latitude = element['lat']
                 ambulance.longitude = element['lon']
+                hospital.latitude = ambulance.latitude
+                hospital.longitude = ambulance.longitude
             elif 'center' in element:
                 ambulance.latitude = element['center']['lat']
                 ambulance.longitude = element['center']['lon']
+                hospital.latitude = ambulance.latitude
+                hospital.longitude = ambulance.longitude
             else:
                 continue
             
             ambulances.append(ambulance)
+            hospitals.append(hospital)
             i += 1
     else:
         ambulances = [Ambulance(x, Ambulance_type.BASIC) for x in range(1,100)]
 
         
-    callers = [Caller(str(x)) for x in range(9_120_356_632, 9_999_999_999, 1_032_789)]
+    callers = [Caller(str(x), "Bob") for x in range(9_120_356_632, 9_999_999_999, 1_032_789)]
     orders = [Order(amb, caller) for amb, caller in zip(ambulances[1:100:4], callers[11:555:23])]
+
+    overpass_query = f"""
+    [out:json];
+    (
+    node["highway"="traffic_signals"]({CHENNAI_BBOX});
+    );
+    out body;
+    """ 
+
+    response = requests.get(overpass_url, params={'data': overpass_query})
+
+    if response.status_code == 200:
+        data = response.json()
+        for element in data['elements']:
+            if element['type'] == 'node':
+                lat = element['lat']
+                lon = element['lon']
+                point_geom = from_shape(Point(lon, lat), srid=4326)  # Create POINT geometry
+                traffic_light = TrafficLight(
+                    id = element['id'],
+                    name = element['tags'].get('name', "Traffic signal"),
+                    location=point_geom
+                )
+                db.session.add(traffic_light)
     
     db.session.add_all(ambulances)
     db.session.add_all(callers)
     db.session.add_all(orders)
+    db.session.add_all(hospitals)
 
     db.session.commit() 
     return jsonify({
         "ambulances": [ambulance.id for ambulance in ambulances],
         "callers": [caller.phone_no for caller in callers],
-        "orders" : [order.order_id for order in orders]
+        "orders" : [order.order_id for order in orders],
+        "hospitals": [hospital.name for hospital in hospitals]
     })
 
 @admin.route('/update_ambulance/<int:ambulance_id>', methods=['PUT'])

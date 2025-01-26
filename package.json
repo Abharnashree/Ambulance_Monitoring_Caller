@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@gorhom/bottom-sheet": "^5.0.6",
+    "@mapbox/polyline": "^1.2.1",
     "@react-native-async-storage/async-storage": "^1.23.1",
     "@react-native-firebase/app": "^21.7.0",
     "@react-native-firebase/auth": "^21.7.0",
