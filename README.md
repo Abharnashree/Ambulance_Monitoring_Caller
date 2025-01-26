@@ -17,6 +17,8 @@ Step 3: Install all the packages listed in the file backend/requirements.txt
 Step 4: Also, start your apache and mysql servers(preferrably on their default ports)
         and redis_cli
         create a database for our project in pg admin
+        and create an postgis extension in the database by the following query in the query editor of the database
+        CREATE EXTENSION postgis;
         reflect your changes to \__init__.py (to the database connection uri)
 
 Step 5: Now, run the following command to start the server
