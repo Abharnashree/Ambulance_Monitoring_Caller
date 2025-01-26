@@ -1,23 +1,10 @@
 import React, { useRef, useState } from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
 import { Text, TextInput, Button } from 'react-native-paper';
-import { getApp, initializeApp } from 'firebase/app';
-import {
-  initializeAuth,
-  getReactNativePersistence,
-  PhoneAuthProvider,
-  signInWithCredential,
-} from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { FirebaseRecaptchaVerifierModal, FirebaseRecaptchaBanner } from 'expo-firebase-recaptcha';
-import fbConfig from '../config/firebase';
+import axios from 'axios';
 
-// Initialize Firebase
-try {
-  initializeApp(fbConfig);
-} catch (error) {
-  console.log('Initializing error:', error);
-}
+
 
 const app = getApp();
 const auth = initializeAuth(app, {
@@ -29,7 +16,6 @@ if (!app?.options || Platform.OS === 'web') {
 }
 
 const SignupScreen = ({ navigation }) => {
-  const recaptchaVerifier = useRef(null);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [verificationId, setVerificationID] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
@@ -38,11 +24,15 @@ const SignupScreen = ({ navigation }) => {
 
   const handleSendVerificationCode = async () => {
     try {
-      const phoneProvider = new PhoneAuthProvider(auth);
-      const verificationId = await phoneProvider.verifyPhoneNumber(phoneNumber, recaptchaVerifier.current);
-      setVerificationID(verificationId);
+      const number = phoneNumber;
+      const response = axios.post('http://0.0.0.0:5000/sendOtp',{
+        phoneNumber:number,
+      })
+
+      console.log(response.data);
       setInfo('Success: Verification code has been sent to your phone');
     } catch (error) {
+      setInfo(`Error: ${error.message}`);
       setInfo(`Error: ${error.message}`);
     }
   };
@@ -60,14 +50,13 @@ const SignupScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <FirebaseRecaptchaVerifierModal ref={recaptchaVerifier} firebaseConfig={fbConfig} />
       {info && <Text style={styles.infoText}>{info}</Text>}
       {!verificationId && (
         <View style={styles.inputContainer}>
           <Text style={styles.labelText}>Enter the phone number:</Text>
           <TextInput
             style={styles.input}
-            placeholder="+2547000000"
+            placeholder="Enter number"
             onChangeText={setPhoneNumber}
           />
           <Button
@@ -100,7 +89,6 @@ const SignupScreen = ({ navigation }) => {
           </Button>
         </View>
       )}
-      {attemptInvisibleVerification && <FirebaseRecaptchaBanner />}
     </View>
   );
 };
