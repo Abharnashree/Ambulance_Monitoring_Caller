@@ -9,8 +9,6 @@ New column - password is added to Caller model
 
 auth = Blueprint('auth', __name__)
 
-FIREBASE_API_URL = "https://identitytoolkit.googleapis.com/v1/accounts"
-FIREBASE_API_KEY = "AIzaSyC_bSKKHd-DcPgWXUbQ823XUzmpCuN_QcI"
 
 @auth.route('/caller/register', methods=['POST'])
 def register():
