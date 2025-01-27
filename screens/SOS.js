@@ -7,7 +7,7 @@ import axios from 'axios';
 const SOS = ({ navigation }) => {
   const [location, setLocation] = useState(null);
   const [driverDetails, setDriverDetails] = useState(null); // State to store driver details
-  const socket = io('http://192.168.161.210:5000', { transports: ['websocket'] });
+  const socket = io('http://10.11.54.229:5000', { transports: ['websocket'] });
 
   // Effect hook to handle socket connection and disconnection
   useEffect(() => {
@@ -15,14 +15,14 @@ const SOS = ({ navigation }) => {
 
     socket.on("connect", () => {
       console.log("Socket connected");
-      socket.emit('join_room', { room: 'caller-7418581672' });
+      socket.emit('join_room', { room: 'caller-7418581672' }); //The phone number is hardocded, it should actually be accessed from cookies
     });
 
     socket.on("driver_details", (data) => {
       console.log('Driver details received:', data);
       setDriverDetails(data); // Save driver details when received
     });
-
+ 
     return () => {
       socket.disconnect(); // Cleanup socket connection on unmount
     };
@@ -32,8 +32,9 @@ const SOS = ({ navigation }) => {
   useEffect(() => {
     if (driverDetails && location) {
       console.log("Driver details and location available, navigating...");
+      console.log("Right before navigating",location);
       navigation.navigate('AmbTrack', {
-        driverDetails,
+        driverDetails: driverDetails,
         userLocation: location,
       });
     }
@@ -63,7 +64,7 @@ const SOS = ({ navigation }) => {
       setLocation(currlocation.coords);
       console.log("Current location BEFORE API response:", currlocation);
 
-      const response = await axios.post('http://192.168.161.210:5000/caller/booking', { 
+      const response = await axios.post('http://10.11.54.229:5000/caller/booking', { 
         //use ipconfig and use your own ipv4 address for wifi
         caller_phone_no: '7418581672', // Replace with the actual phone number
         latitude: currlocation.coords.latitude,
@@ -76,8 +77,23 @@ const SOS = ({ navigation }) => {
 
     } catch (error) {
       console.log("Error:", error.message);
+      console.log("Error details:", error);
       Alert.alert('Error', 'An error occurred while triggering the SOS.');
+      if (error.response) {
+        console.log("Error response data:", error.response.data);
+        console.log("Error response status:", error.response.status);
+        console.log("Error response headers:", error.response.headers);
+        Alert.alert('Error', `Response Error: ${error.response.status} - ${error.response.data?.message || 'Unknown error'}`);
+      } else if (error.request) {
+        console.log("Error request:", error.request);
+        Alert.alert('Error', 'No response received from the server. Check the server status.');
+      } else {
+        console.log("Error message:", error.message);
+        Alert.alert('Error', `Request failed: ${error.message}`);
+      }
     }
+    
+    
   };
 
   return (

@@ -6,21 +6,30 @@ import polyline from '@mapbox/polyline';
 import io from 'socket.io-client';
 import BottomSheetComponent from '../components/BottomSheetComponent';
 
-const AmbTrack = () => {
+const AmbTrack = ({route}) => {
+  const { driverDetails, userLocation } = route.params;
+  console.log("The driverDetail : ----------------------------");
+  console.log(driverDetails);
+  console.log("The userCLocation : ----------------------------");
+  console.log(userLocation);
   const [ambulanceDetails, setAmbulanceDetails] = useState({
-    ambulance_id: 1614,
-    distance: '3.0 km',
-    duration: '8 mins',
-    route: 'grygAwlbfNhES@AFCPBJH@FIPCBA@Cv@Y~JGPHnCLhCJlBVfGHhCL\\?^RrEDpANdENrEX~FTbH@nI?`HGzGEtMEbJsC@uAFgMZmA@Co@',
-    type: 'Ambulance_type.BASIC',
-    latitude: 11.931972855798419,
-    longitude: 79.80786230938979,
+    ambulance_id: driverDetails.ambulance_id,
+    distance: driverDetails.distance,
+    duration: driverDetails.duration,
+    route: driverDetails.route,
+    type: driverDetails.type,
+    latitude: driverDetails.latitude,
+    longitude: driverDetails.longitude,
   });
+  useEffect (() => {
+    console.log("The ambulanceDetails : ----------------------------");
+    console.log(ambulanceDetails);
+  }, [ambulanceDetails]);
 
-  const userLocation = {
-    latitude: 11.934842145143234,
-    longitude: 79.78588598212839,
-  };
+  // const userCLocation = {
+  //   latitude: 11.934842145143234,
+  //   longitude: 79.78588598212839,
+  // };
 
   const [decodedPolyline, setDecodedPolyline] = useState([]);
   const [mapLoaded, setMapLoaded] = useState(false);
@@ -40,9 +49,9 @@ const AmbTrack = () => {
 
   // Initialize Socket.IO connection
   useEffect(() => {
-    socket.current = io("http://192.168.161.210:5000"); // Replace with your IPv4 wifi URL
+    socket.current = io("http://10.11.54.229:5000"); // Replace with your IPv4 wifi URL
     socket.current.on("connect", () => {
-      console.log("Connected to server");
+      console.log("Client : Connected to server");
     });
 
     
@@ -87,7 +96,7 @@ const AmbTrack = () => {
           }}
           title="Your Location"
         />
-
+        
         <Marker
           coordinate={{
             latitude: ambulanceDetails.latitude,
@@ -96,6 +105,15 @@ const AmbTrack = () => {
           title="Ambulance Location"
           description={`Ambulance ID: ${ambulanceDetails.ambulance_id}, Type: ${ambulanceDetails.type}`}
         />
+        <Marker
+      coordinate={{
+        latitude: ambulanceDetails.latitude,
+        longitude: ambulanceDetails.longitude,
+      }}
+      title="Ambulance Location"
+      description={`Ambulance ID: ${ambulanceDetails.ambulance_id}, Type: ${ambulanceDetails.type}`}
+      
+    />
         {decodedPolyline.length > 0 && (
           <Polyline coordinates={decodedPolyline} strokeWidth={3} strokeColor="red" />
         )}

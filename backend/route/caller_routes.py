@@ -52,20 +52,23 @@ def create_booking():
 
     # Emit details to both frontends using Socket.IO
     # Send driver details to the caller's frontend
+    
     socketio.emit('driver_details', {
         "ambulance_id":nearest_ambulance.id,
         "type": str(nearest_ambulance.type),
-        "route": route_details["route"],  
+        "route": route_details['route'],  
         "duration": route_details["duration"],  
-        "distance": route_details["distance"] 
+        "distance": route_details["distance"],
+        "latitude": nearest_ambulance.latitude,
+        "longitude": nearest_ambulance.longitude
 
     }, to=f"caller-{caller_phone_no}")
-
+    print("Sent details to caller")
     # Send patient location to the ambulance driver's frontend
     socketio.emit('patient_location', {
-        # "patient_latitude": caller_lat,
-        # "patient_longitude": caller_long,
-        "route": route_details["route"],  
+        "latitude": caller_lat,
+        "longitude": caller_long,
+        "route": route_details['route'],  
         "duration": route_details["duration"],  
         "distance": route_details["distance"] 
     }, to=f"ambulance-{nearest_ambulance.id}")
@@ -169,7 +172,7 @@ def update_ambulance_location():
         return jsonify({"message": "No active order found for this ambulance!"}), 404
 
     # Get caller's location (destination)
-    caller_lat = order.caller.latitude
+    caller_lat = order.caller.latitude      # caller location needs to be stored in the db, otherwise this wont work
     caller_long = order.caller.longitude
 
     # Calculate route details using Directions API
