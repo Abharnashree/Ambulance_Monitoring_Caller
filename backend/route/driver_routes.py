@@ -31,53 +31,6 @@ def get_bookings():
         "caller": order.caller.phone_no
     } for order in bookings]), 200
 
-@driver.route("/driver/bookings/<int:id>/accept", methods=["POST"])
-def accept_booking(id):
-    order = Order.query.filter_by(order_id=id).first()
-    if order and order.order_status == Order_status.IN_PROGRESS:
-        rejected_bookings = session.get('rejected_bookings', [])
-        if id in rejected_bookings:
-            rejected_bookings.remove(id)
-            session['rejected_bookings'] = rejected_bookings
-        
-        session['current_order_id'] = id
-        session['customer_id'] = order.caller.phone_no
-        session['ambulance_id'] = order.ambulance.id
-        session['start_time'] = datetime.datetime.utcnow().isoformat()
-
-        return jsonify({
-            "message": f"Booking {id} accepted and session started.",
-            "start_time": session['start_time']
-        }), 200
-    return jsonify({"error": "Booking is not available or invalid status."}), 404
-
-@driver.route("/driver/bookings/<int:id>/reject", methods=["POST"])
-def reject_booking(id):
-    order = Order.query.filter_by(order_id=id).first()
-    if order:
-        rejected_bookings = session.get('rejected_bookings', [])
-        rejected_bookings.append(id)
-        session['rejected_bookings'] = rejected_bookings
-
-        session.pop('current_order_id', None)
-        session.pop('customer_id', None)
-        session.pop('ambulance_id', None)
-        session.pop('start_time', None)
-
-        return jsonify({
-            "message": f"Booking {id} rejected and is no longer available for you."
-        }), 200
-    return jsonify({"error": "Booking not found or invalid status."}), 404
-
-
-''' To be called in the end session endpoint'''
-def clear_session():
-    session.pop('rejected_bookings', None)
-    session.pop('current_order_id', None)
-    session.pop('customer_id', None)
-    session.pop('ambulance_id', None)
-    session.pop('start_time', None)
-
 
 @driver.route('/driver/update-location', methods=['POST'])
 def update_location():
@@ -93,6 +46,10 @@ def update_location():
         order.ambulance.longitude = ambulance_lon
         db.session.commit()
 
+        current_time = datetime.datetime.utcnow()
+        redis_client.set(f"ambulance:{order_id}:location", f"{ambulance_lat},{ambulance_lon}")
+        redis_client.set(f"ambulance:{order_id}:last_update_timestamp", current_time.strftime("%Y-%m-%d %H:%M:%S"))
+       
         # Notify traffic lights on the route
         redis_client.publish('ambulance_updates', f"{order_id},{ambulance_lat},{ambulance_lon}")
 

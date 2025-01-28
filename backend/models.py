@@ -4,10 +4,6 @@ from .extensions import db
 from enum import Enum
 from geoalchemy2 import Geometry
 
-'''
-New column - password is added to Caller model
-
-'''
 
 class Order_status(Enum):
   PENDING =  "Pending"

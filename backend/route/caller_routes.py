@@ -1,5 +1,5 @@
 from flask import Flask, Blueprint, request, jsonify
-from datetime import datetime
+from datetime import datetime, timedelta
 import googlemaps
 from ..models import *
 from ..extensions import db, redis_client, socketio
@@ -175,27 +175,48 @@ def update_ambulance_location():
     caller_lat = order.caller.latitude      # caller location needs to be stored in the db, otherwise this wont work
     caller_long = order.caller.longitude
 
-    # Calculate route details using Directions API
-    route_details = get_route_with_directions(latitude, longitude, caller_lat, caller_long)
-    if not route_details:
-        return jsonify({"message": "Unable to fetch route details!"}), 500
+# Get last known location and timestamp from Redis
+    last_location = redis_client.get(f"ambulance:{ambulance_id}:location")
+    last_timestamp = redis_client.get(f"ambulance:{ambulance_id}:last_update_timestamp")
 
-    
+    current_time = datetime.utcnow()
 
-    # Notify both frontends about the updated route
-    socketio.emit('ambulance_route_update', {
-        "ambulance_id": ambulance_id,
-        "route": route_details["route"],  # Encoded polyline for rendering on the map
-        "duration": route_details["duration"],  
-        "distance": route_details["distance"]  
-    }, to=f"caller-{order.caller.phone_no}")
+    if last_location and last_timestamp:
+        last_lat, last_long = map(float, last_location.decode('utf-8').split(","))
+        last_timestamp = datetime.strptime(last_timestamp.decode('utf-8'), "%Y-%m-%d %H:%M:%S")
 
-    socketio.emit('ambulance_route_update', {
-        "ambulance_id": ambulance_id,
-        "route": route_details["route"],
-        "duration": route_details["duration"],
-        "distance": route_details["distance"]
-    }, to=f"ambulance-{ambulance_id}")
+        # Calculate distance moved since the last update
+        distance_moved = haversine_distance(last_lat, last_long, latitude, longitude)
+
+        # If the ambulance not moved more than 10m and it has been more than 3 mins
+        if distance_moved < 0.01: 
+            time_difference = current_time - last_timestamp
+            if time_difference > timedelta(minutes=3):  
+                socketio.emit('static_ambulance_report', {
+                    "ambulance_id": ambulance_id,
+                    "message": "Ambulance has been static for more than 3 minutes."
+                }, to=f"dispatcher-{ambulance_id}")  # It should be sent to control static interface
+
+        else:
+            
+            route_details = get_route_with_directions(latitude, longitude, caller_lat, caller_long)
+            if not route_details:
+                return jsonify({"message": "Unable to fetch route details!"}), 500
+
+     
+            socketio.emit('ambulance_route_update', {
+                "ambulance_id": ambulance_id,
+                "route": route_details["route"],  
+                "duration": route_details["duration"],
+                "distance": route_details["distance"]
+            }, to=f"caller-{order.caller.phone_no}")
+
+            socketio.emit('ambulance_route_update', {
+                "ambulance_id": ambulance_id,
+                "route": route_details["route"],
+                "duration": route_details["duration"],
+                "distance": route_details["distance"]
+            }, to=f"ambulance-{ambulance_id}")
 
     # Cache the updated location in Redis
     redis_client.set(f"ambulance:{ambulance_id}:location", f"{latitude},{longitude}")
