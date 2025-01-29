@@ -34,7 +34,10 @@ const SignupScreen = ({ navigation }) => {
     try {
       const response = await axios.post('http://192.168.113.158:5000/verifyOtp',{
         verificationCode,
+        phoneNumber, 
+        name,
       });
+
       if (response.data.status === 'success') {
         setInfo('Signed in successfully');
         console.log(name, phoneNumber);

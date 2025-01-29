@@ -7,6 +7,8 @@ from twilio.base.exceptions import TwilioRestException
 import os
 import time
 import random
+from ..extensions import db
+from ..models import Caller 
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -54,43 +56,43 @@ def get_otp():
 
 @auth.route('/verifyOtp', methods=['POST'])
 def verify_otp():
-    if 'verificationCode' in request.json:
-        code = request.json.get('verificationCode')
-        if code == session.get('otp_code'):
-            # Check if the OTP is still valid (generated within the last 60 seconds)
-            otp_time = session.get('otp_time', 0)
-            current_time = time.time()
-            if current_time - otp_time <= 120:
- 
-# ADD CODE TO STORE USER DETAILS IN BACKEND 
+    data = request.json
+    print("Received data:", data)  # Debugging line
 
-                #We can collect user data directly from session
-                # user_details = session.get('user_data')
-    
-                # Collect user data
-                # name = request.form.get('name')
-                # prn = request.form.get('prn')
-                # email = request.form.get('email')
-                # branch = request.form.get('branch')
-                # phone_number = request.form.get('phone-number')
+    if 'verificationCode' not in data:
+        return jsonify({"error": "Verification code is required"}), 400
 
-                # You can now process or store this user data as needed
-                # user_data = {
-                #     'name': user_details['name'],
-                #     'prn': user_details['prn'],
-                #     'email': user_details['email'],
-                #     'branch': user_details['branch'],
-                #     'phone_number': user_details['phone-number']
-                # }
-                
-                # Printing the stored user data
-                print("otp verified")
-                
-                return jsonify({"status": "success"})
-            else:
-                return jsonify({"error": "OTP has expired"})
-        return jsonify({"error": "You entered the wrong code!"})
-    return jsonify({"error": "Verification code is required"})
+    code = data.get('verificationCode')
+    name = data.get('name')
+    phone_number = data.get('phoneNumber')[-10:]
+
+    print("Session OTP:", session.get('otp_code'))  # Debugging
+    print("Session OTP time:", session.get('otp_time'))  # Debugging
+
+    if code != session.get('otp_code'):
+        return jsonify({"error": "You entered the wrong code!"}), 400
+
+    otp_time = session.get('otp_time', 0)
+    current_time = time.time()
+    if current_time - otp_time > 120:
+        return jsonify({"error": "OTP has expired"}), 400
+
+    # Check if caller already exists
+    caller = Caller.query.get(phone_number)
+    if not caller:
+        try:
+            new_caller = Caller(phone_no=phone_number, name=name)
+            db.session.add(new_caller)
+            db.session.commit()
+            print(f"New caller added: {new_caller}")
+        except Exception as e:
+            db.session.rollback()
+            print("Database Error:", str(e))  # Debugging
+            return jsonify({"error": "Database error"}), 500
+
+    print("OTP verified")
+    return jsonify({"status": "success"})
+
 
 # @auth.route('/caller/logout', methods=['POST'])
 # def logout():
