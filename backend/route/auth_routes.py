@@ -10,6 +10,9 @@ import random
 from ..extensions import db
 from ..models import Caller 
 from dotenv import load_dotenv
+from flask import Blueprint, request, jsonify, session, make_response
+import jwt
+from datetime import datetime
 
 # Load environment variables
 load_dotenv()
@@ -57,41 +60,52 @@ def get_otp():
 @auth.route('/verifyOtp', methods=['POST'])
 def verify_otp():
     data = request.json
-    print("Received data:", data)  # Debugging line
-
-    if 'verificationCode' not in data:
-        return jsonify({"error": "Verification code is required"}), 400
-
     code = data.get('verificationCode')
     name = data.get('name')
     phone_number = data.get('phoneNumber')[-10:]
-
-    print("Session OTP:", session.get('otp_code'))  # Debugging
-    print("Session OTP time:", session.get('otp_time'))  # Debugging
+    
+    print(f"Received OTP: {code}, Stored OTP: {session.get('otp_code')}")
 
     if code != session.get('otp_code'):
         return jsonify({"error": "You entered the wrong code!"}), 400
 
     otp_time = session.get('otp_time', 0)
-    current_time = time.time()
-    if current_time - otp_time > 120:
+    if time.time() - otp_time > 120:
         return jsonify({"error": "OTP has expired"}), 400
 
-    # Check if caller already exists
     caller = Caller.query.get(phone_number)
     if not caller:
-        try:
-            new_caller = Caller(phone_no=phone_number, name=name)
-            db.session.add(new_caller)
-            db.session.commit()
-            print(f"New caller added: {new_caller}")
-        except Exception as e:
-            db.session.rollback()
-            print("Database Error:", str(e))  # Debugging
-            return jsonify({"error": "Database error"}), 500
+        new_caller = Caller(phone_no=phone_number, name=name)
+        db.session.add(new_caller)
+        db.session.commit()
 
-    print("OTP verified")
-    return jsonify({"status": "success"})
+    # jwt
+    token = jwt.encode(
+    {
+        'phone_number': phone_number,
+        'name': name,
+        'iat': datetime.utcnow()
+    },
+    os.getenv("SECRET_KEY"),
+    algorithm='HS256'
+    )
+
+    return jsonify({"token":token}),200
+
+
+@auth.route('/getUser', methods=['GET'])
+def get_user():
+    user_id = request.cookies.get("user_id")
+
+    if not user_id:
+        return jsonify({"error": "User not authenticated"}), 401
+
+    user = Caller.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    return jsonify({"name": user.name, "phone_no": user.phone_no})
+
 
 
 # @auth.route('/caller/logout', methods=['POST'])
