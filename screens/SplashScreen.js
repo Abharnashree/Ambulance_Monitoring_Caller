@@ -16,10 +16,10 @@ const SplashScreen = ({ navigation }) => {
     try {
       const dataToken = await AsyncStorage.getItem("AccessToken");
       console.log("this is from the splash screen ", dataToken);
-      navigation.replace(dataToken ? "SOS" : "SignupScreen");
+      navigation.replace(dataToken ? "SOS" : "Signup");
     } catch (error) {
       console.error("Error fetching token:", error);
-      navigation.replace("SignupScreen");
+      navigation.replace("Signup");
     }
   };
 
