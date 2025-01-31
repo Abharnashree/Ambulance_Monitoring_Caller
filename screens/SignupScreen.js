@@ -3,6 +3,7 @@ import { View, StyleSheet, Platform } from 'react-native';
 import { Text, TextInput, Button } from 'react-native-paper';
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SignupScreen = ({ navigation }) => {
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -41,14 +42,9 @@ const SignupScreen = ({ navigation }) => {
         setInfo('Signed in successfully');
         // Assuming the response contains a JWT token
         const { token } = response.data; // Get token from response
-
+        console.log(token);
         // Store the JWT token securely
-        try {
-          await SecureStore.setItemAsync('authToken', token);
-          console.log('Token stored successfully');
-        } catch (error) {
-          console.error('Error storing the token', error);
-        }
+        AsyncStorage.setItem("AccessToken",response.data.token)
 
         navigation.navigate('SOS'); // Navigate to the SOS screen after success
       } else {

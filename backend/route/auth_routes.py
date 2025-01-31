@@ -12,7 +12,6 @@ from ..models import Caller
 from dotenv import load_dotenv
 from flask import Blueprint, request, jsonify, session, make_response
 import jwt
-from datetime import datetime
 
 # Load environment variables
 load_dotenv()
@@ -84,13 +83,12 @@ def verify_otp():
     {
         'phone_number': phone_number,
         'name': name,
-        'iat': datetime.utcnow()
     },
     os.getenv("SECRET_KEY"),
     algorithm='HS256'
     )
 
-    return jsonify({"token":token}),200
+    return jsonify({"token":token,"status":"success"}),200
 
 
 @auth.route('/getUser', methods=['GET'])
