@@ -31,11 +31,7 @@ const App = () => {
     return (
       <NavigationContainer>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
-          {isLoggedIn ? (
-            <Stack.Screen name="SOS" component={SOS} />
-          ) : (
-            <Stack.Screen name="Splash" component={SplashScreen} />
-          )}
+          <Stack.Screen name="Splash" component={SplashScreen} />
           <Stack.Screen name="Signup" component={SignupScreen} />
           <Stack.Screen name="SOS" component={SOS}/> 
           <Stack.Screen name="AmbTrack" component={AmbTrack}/> 
