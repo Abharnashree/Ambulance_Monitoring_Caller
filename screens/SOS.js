@@ -3,19 +3,38 @@ import { View, Text, StyleSheet, Image, TouchableOpacity, Alert } from 'react-na
 import { io } from 'socket.io-client';
 import * as Location from 'expo-location';
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SOS = ({ navigation }) => {
   const [location, setLocation] = useState(null);
   const [driverDetails, setDriverDetails] = useState(null); // State to store driver details
-  const socket = io('http://10.11.54.229:5000', { transports: ['websocket'] });
+  const [phoneNumber, setPhoneNumber] = useState(null);
+  const socket = io('http://192.168.113.158:5000', { transports: ['websocket'] });
 
   // Effect hook to handle socket connection and disconnection
   useEffect(() => {
     socket.connect();
 
-    socket.on("connect", () => {
+    socket.on("connect", async () => {
       console.log("Socket connected");
-      socket.emit('join_room', { room: 'caller-7418581672' }); //The phone number is hardocded, it should actually be accessed from cookies
+    
+      try {
+        // Retrieve the stored JWT token from AsyncStorage
+        const token = await AsyncStorage.getItem("AccessToken");
+        
+        if (token) {
+          // Decode the JWT token to extract the phone number
+          const decodedToken = JSON.parse(atob(token.split('.')[1])); 
+          const phone = decodedToken.phone_number
+          setPhoneNumber(phone); // Extract phone number from token
+          console.log("PHONE NUMBER RETRIEVED FROM COOKIE",phoneNumber)
+          socket.emit('join_room', { room: `caller-${phoneNumber}` });
+        } else {
+          console.error("No token found in storage");
+        }
+      } catch (error) {
+        console.error("Error retrieving phone number:", error);
+      }
     });
 
     socket.on("driver_details", (data) => {
@@ -64,9 +83,9 @@ const SOS = ({ navigation }) => {
       setLocation(currlocation.coords);
       console.log("Current location BEFORE API response:", currlocation);
 
-      const response = await axios.post('http://10.11.54.229:5000/caller/booking', { 
+      const response = await axios.post('http://192.168.113.158:5000/caller/booking', { 
         //use ipconfig and use your own ipv4 address for wifi
-        caller_phone_no: '7418581672', // Replace with the actual phone number
+        caller_phone_no: phoneNumber, // how to use the o
         latitude: currlocation.coords.latitude,
         longitude: currlocation.coords.longitude,
       });
