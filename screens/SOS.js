@@ -28,7 +28,7 @@ const SOS = ({ navigation }) => {
           const phone = decodedToken.phone_number
           setPhoneNumber(phone); // Extract phone number from token
           console.log("PHONE NUMBER RETRIEVED FROM COOKIE",phoneNumber)
-          socket.emit('join_room', { room: `caller-${phoneNumber}` });
+          socket.emit('join_room', { room: `caller-${phone}` });
         } else {
           console.error("No token found in storage");
         }
@@ -41,7 +41,8 @@ const SOS = ({ navigation }) => {
       console.log('Driver details received:', data);
       setDriverDetails(data); // Save driver details when received
     });
- 
+   
+
     return () => {
       socket.disconnect(); // Cleanup socket connection on unmount
     };
