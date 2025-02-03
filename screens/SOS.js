@@ -27,7 +27,7 @@ const SOS = ({ navigation }) => {
           const decodedToken = JSON.parse(atob(token.split('.')[1])); 
           const phone = decodedToken.phone_number
           setPhoneNumber(phone); // Extract phone number from token
-          console.log("PHONE NUMBER RETRIEVED FROM COOKIE",phoneNumber)
+          console.log("PHONE NUMBER RETRIEVED FROM COOKIE",phone)
           socket.emit('join_room', { room: `caller-${phone}` });
         } else {
           console.error("No token found in storage");

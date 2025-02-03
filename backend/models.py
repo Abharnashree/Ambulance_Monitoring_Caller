@@ -15,29 +15,37 @@ class Ambulance_type(Enum):
   ADVANCED = "Advanced"
 
 class Order(db.Model):
-  # __tablename__ = 'orders'
-  ambulance = db.relationship('Ambulance', back_populates='attended_victims_association')
-  caller = db.relationship('Caller', back_populates='call_requests_association')
+    # __tablename__ = 'orders'
+    ambulance = db.relationship('Ambulance', back_populates='attended_victims_association')
+    caller = db.relationship('Caller', back_populates='call_requests_association')
 
-  order_id = db.Column(db.Integer, primary_key=True)
-  ambulance_id = db.Column( db.Integer, db.ForeignKey('ambulance.id'), nullable=False)
-  caller_phone_no = db.Column( db.String(10), db.ForeignKey('caller.phone_no'), nullable=False)
-  date_time = db.Column(db.DateTime, default=datetime.now())
-  order_status = db.Column(db.Enum(Order_status), default= Order_status.PENDING)
+    order_id = db.Column(db.Integer, primary_key=True)
+    ambulance_id = db.Column(db.Integer, db.ForeignKey('ambulance.id'), nullable=False)
+    caller_phone_no = db.Column(db.String(10), db.ForeignKey('caller.phone_no'), nullable=False)
+    date_time = db.Column(db.DateTime, default=datetime.now())
+    order_status = db.Column(db.Enum(Order_status), default=Order_status.PENDING)
 
-  traffic_light_intersection = db.Column(db.ARRAY(db.String(20)))
-  amb_caller_route = db.Column(Geometry(geometry_type='LINESTRING', srid=4326), nullable=True, default='LINESTRING()')
-  caller_hospital_route = db.Column(Geometry(geometry_type='LINESTRING', srid=4326), nullable=True, default='LINESTRING()')
-  
+    traffic_light_intersection = db.Column(db.ARRAY(db.String(20)))
+    amb_caller_route = db.Column(Geometry(geometry_type='LINESTRING', srid=4326), nullable=True, default='LINESTRING()')
+    caller_hospital_route = db.Column(Geometry(geometry_type='LINESTRING', srid=4326), nullable=True, default='LINESTRING()')
 
-  def __init__(self, ambulance, caller, date_time=datetime.now(), order_status=Order_status.PENDING, amb_caller_route='LINESTRING(0 0, 1 0)', caller_hospital_route='LINESTRING(0 0, 1 0)', traffic_light_intersection=[]):
-    self.ambulance = ambulance
-    self.caller = caller
-    self.date_time = date_time
-    self.order_status = order_status
-    self.amb_caller_route = amb_caller_route
-    self.caller_hospital_route = caller_hospital_route
-    self.traffic_light_intersection = traffic_light_intersection
+    # New columns for caller location
+    #caller_latitude = db.Column(db.Float, nullable=False)
+    #caller_longitude = db.Column(db.Float, nullable=False)
+
+    def __init__(self, ambulance, caller, date_time=datetime.now(), order_status=Order_status.PENDING, 
+                 amb_caller_route='LINESTRING(0 0, 1 0)', caller_hospital_route='LINESTRING(0 0, 1 0)', 
+                 traffic_light_intersection=[], caller_latitude=0.0, caller_longitude=0.0):
+        self.ambulance = ambulance
+        self.caller = caller
+        self.date_time = date_time
+        self.order_status = order_status
+        self.amb_caller_route = amb_caller_route
+        self.caller_hospital_route = caller_hospital_route
+        self.traffic_light_intersection = traffic_light_intersection
+        self.caller_latitude = caller_latitude
+        self.caller_longitude = caller_longitude
+
 
 class Ambulance(db.Model):
   id = db.Column(db.Integer, primary_key = True)
