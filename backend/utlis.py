@@ -1,5 +1,15 @@
 import math
 import googlemaps
+from sqlalchemy import func, select, text
+from geoalchemy2 import Geometry, WKTElement
+from geoalchemy2.functions import ST_ClosestPoint, ST_LineLocatePoint, ST_LineSubstring, ST_AsText, ST_Length, ST_Transform
+from geoalchemy2.shape import to_shape, from_shape
+from shapely.geometry import Point, LineString, MultiLineString
+from shapely.ops import substring
+from pyproj import Transformer
+from .extensions import *
+from .models import *
+from shapely import wkb
 
 gmaps = googlemaps.Client(key='AIzaSyDJfABDdpB7fIMs_F4e1IeqKoEQ2BSNSl0')
 #This function uses Directions API to get the route 
@@ -49,3 +59,31 @@ def haversine_distance(lat1, lon1, lat2, lon2):
     a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     return R * c
+
+def get_proximity(linestring, points, buffer_distance=750):
+
+    query = text("""
+        WITH input AS (
+            SELECT ST_SetSRID(ST_GeomFromEWKB(:linestring), 4326) AS line
+        ),
+        points AS (
+            SELECT ST_SetSRID(ST_GeomFromEWKB(unnest(array[:points_list])), 4326) AS pt
+        ),
+        segments AS (
+            SELECT 
+                ST_LineSubstring(line, 
+                    GREATEST(ST_LineLocatePoint(line, pt) - (:buffer_distance / ST_Length(line)::float), 0),
+                    LEAST(ST_LineLocatePoint(line, pt) + (:buffer_distance / ST_Length(line)::float), 1)
+                ) AS segment
+            FROM input, points
+        )
+        SELECT ST_Collect(segment) AS multilinestring FROM segments;
+    """)
+
+    result = db.session.execute(query, {
+        "linestring": linestring.data,  # Directly use the WKBElement
+        "points_list": [point.data for point in points],    # Pass the list of WKBElement points
+        "buffer_distance": buffer_distance
+    }).scalar()
+
+    return result  # Returns MultiLineString (WKBElement)

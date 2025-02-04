@@ -70,7 +70,7 @@ def create_booking():
         "distance": route_details["distance"] 
     }, to=f"ambulance-{nearest_ambulance.id}")
 
-    route = ST_Segmentize(from_shape(ambulance_caller_route, srid=4326), 0.0001)
+    route = ST_Segmentize(from_shape(ambulance_caller_route, srid=4326), 500)
 
     intersection = TrafficLight.query.filter(
         ST_DWithin(
@@ -85,9 +85,12 @@ def create_booking():
         caller=caller,
         date_time=datetime.now(),
         order_status=Order_status.IN_PROGRESS,
-        amb_caller_route = from_shape(ambulance_caller_route, srid=4326),
-        traffic_light_intersection = [str(traffic_light.id) for traffic_light in intersection]
+        amb_caller_route = from_shape(ambulance_caller_route, srid=4326)
     )
+
+    proximity = get_proximity(new_booking.amb_caller_route, [traffic_light.location for traffic_light in intersection], 750)
+    new_booking.traffic_light_intersection_proximity = proximity
+
     db.session.add(new_booking)
     nearest_ambulance.isAvailable = False  # Mark ambulance as unavailable
     db.session.commit()
