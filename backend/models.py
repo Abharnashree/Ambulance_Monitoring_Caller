@@ -4,10 +4,6 @@ from .extensions import db
 from enum import Enum
 from geoalchemy2 import Geometry
 
-'''
-New column - password is added to Caller model
-
-'''
 
 class Order_status(Enum):
   PENDING =  "Pending"
@@ -19,15 +15,15 @@ class Ambulance_type(Enum):
   ADVANCED = "Advanced"
 
 class Order(db.Model):
-  # __tablename__ = 'orders'
-  ambulance = db.relationship('Ambulance', back_populates='attended_victims_association')
-  caller = db.relationship('Caller', back_populates='call_requests_association')
+    # __tablename__ = 'orders'
+    ambulance = db.relationship('Ambulance', back_populates='attended_victims_association')
+    caller = db.relationship('Caller', back_populates='call_requests_association')
 
-  order_id = db.Column(db.Integer, primary_key=True)
-  ambulance_id = db.Column( db.Integer, db.ForeignKey('ambulance.id'), nullable=False)
-  caller_phone_no = db.Column( db.String(10), db.ForeignKey('caller.phone_no'), nullable=False)
-  date_time = db.Column(db.DateTime, default=datetime.now())
-  order_status = db.Column(db.Enum(Order_status), default= Order_status.PENDING)
+    order_id = db.Column(db.Integer, primary_key=True)
+    ambulance_id = db.Column(db.Integer, db.ForeignKey('ambulance.id'), nullable=False)
+    caller_phone_no = db.Column(db.String(10), db.ForeignKey('caller.phone_no'), nullable=False)
+    date_time = db.Column(db.DateTime, default=datetime.now())
+    order_status = db.Column(db.Enum(Order_status), default=Order_status.PENDING)
 
   traffic_light_intersection_proximity = db.Column(Geometry(geometry_type='MULTILINESTRING', srid=4326), nullable=True, default=None)
   amb_caller_route = db.Column(Geometry(geometry_type='LINESTRING', srid=4326), nullable=True, default=None)

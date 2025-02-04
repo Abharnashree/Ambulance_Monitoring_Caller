@@ -2,9 +2,8 @@ import React, { useRef, useState } from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
 import { Text, TextInput, Button } from 'react-native-paper';
 import axios from 'axios';
-
-
-
+import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SignupScreen = ({ navigation }) => {
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -15,7 +14,7 @@ const SignupScreen = ({ navigation }) => {
 
   const handleSendVerificationCode = async () => {
     try {
-      const response = await axios.post('http://192.168.113.158:5000/sendOtp',{
+      const response = await axios.post('http://10.11.54.229:5000/sendOtp',{
         phoneNumber,
       });
       if (response.data.status === 'OTP sent') {
@@ -32,14 +31,24 @@ const SignupScreen = ({ navigation }) => {
 
   const handleVerifyVerificationCode = async () => {
     try {
-      const response = await axios.post('http://192.168.113.158:5000/verifyOtp',{
+      // Ensure token is available in the response
+      const response = await axios.post('http://10.11.54.229:5000/verifyOtp', {
         verificationCode,
+        phoneNumber,
+        name,
       });
+
       if (response.data.status === 'success') {
         setInfo('Signed in successfully');
-        console.log(name, phoneNumber);
+        // Assuming the response contains a JWT token
+        const { token } = response.data; // Get token from response
+        console.log(token);
+        // Store the JWT token securely
+        AsyncStorage.setItem("AccessToken",response.data.token)
+
+        navigation.navigate('SOS'); // Navigate to the SOS screen after success
       } else {
-        setInfo('Error: verification failed');
+        setInfo('Error: Verification failed');
       }
     } catch (error) {
       console.error(error);

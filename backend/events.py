@@ -1,3 +1,5 @@
+import random
+import time
 from flask import request
 from flask_socketio import emit, join_room
 
@@ -24,4 +26,13 @@ def handle_join_room(data):
     room = data.get('room')
     join_room(room)
     print(f"Client joined room: {room}")
+
+'''When using phone's gps, it'll automatically send location updates every few secs
+   So the location data is just fetched from driver frontend to backend, and sent to caller frontend'''
+
+@socketio.on('ambulance_location')
+def handle_ambulance_location(data):
+
+    print(f"Received location update: {data}")
+    emit('ambulance_route_update', data, broadcast=True)   #to caller frontend
 
