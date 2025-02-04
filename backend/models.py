@@ -25,19 +25,23 @@ class Order(db.Model):
     date_time = db.Column(db.DateTime, default=datetime.now())
     order_status = db.Column(db.Enum(Order_status), default=Order_status.PENDING)
 
-    traffic_light_intersection_proximity = db.Column(Geometry(geometry_type='MULTILINESTRING', srid=4326), nullable=True, default=None)
+    traffic_light_intersection = db.Column(Geometry(geometry_type='MULTILINESTRING', srid=4326), nullable=True, default=None)
     amb_caller_route = db.Column(Geometry(geometry_type='LINESTRING', srid=4326), nullable=True, default=None)
     caller_hospital_route = db.Column(Geometry(geometry_type='LINESTRING', srid=4326), nullable=True, default=None)
     
+    caller_latitude = db.Column(db.Float, nullable=True)
+    caller_longitude = db.Column(db.Float, nullable=True)
 
-    def __init__(self, ambulance, caller, date_time=datetime.now(), order_status=Order_status.PENDING, amb_caller_route=None, caller_hospital_route=None, traffic_light_intersection_proximity=None):
+    def __init__(self, ambulance, caller, date_time=datetime.now(), order_status=Order_status.PENDING, amb_caller_route=None, caller_hospital_route=None, traffic_light_intersection=None, caller_latitude=None, caller_longitude=None):
       self.ambulance = ambulance
       self.caller = caller
       self.date_time = date_time
       self.order_status = order_status
       self.amb_caller_route = amb_caller_route
       self.caller_hospital_route = caller_hospital_route
-      self.traffic_light_intersection_proximity = traffic_light_intersection_proximity
+      self.traffic_light_intersection = traffic_light_intersection
+      self.caller_latitude = caller_latitude
+      self.caller_longitude = caller_longitude
 
 class Ambulance(db.Model):
   id = db.Column(db.Integer, primary_key = True)
