@@ -25,21 +25,21 @@ class Order(db.Model):
     date_time = db.Column(db.DateTime, default=datetime.now())
     order_status = db.Column(db.Enum(Order_status), default=Order_status.PENDING)
 
-  traffic_light_intersection_proximity = db.Column(Geometry(geometry_type='MULTILINESTRING', srid=4326), nullable=True, default=None)
-  amb_caller_route = db.Column(Geometry(geometry_type='LINESTRING', srid=4326), nullable=True, default=None)
-  caller_hospital_route = db.Column(Geometry(geometry_type='LINESTRING', srid=4326), nullable=True, default=None)
-  
+    traffic_light_intersection_proximity = db.Column(Geometry(geometry_type='MULTILINESTRING', srid=4326), nullable=True, default=None)
+    amb_caller_route = db.Column(Geometry(geometry_type='LINESTRING', srid=4326), nullable=True, default=None)
+    caller_hospital_route = db.Column(Geometry(geometry_type='LINESTRING', srid=4326), nullable=True, default=None)
+    
 
-  def __init__(self, ambulance, caller, date_time=datetime.now(), order_status=Order_status.PENDING, amb_caller_route=None, caller_hospital_route=None, traffic_light_intersection_proximity=None):
-    self.ambulance = ambulance
-    self.caller = caller
-    self.date_time = date_time
-    self.order_status = order_status
-    self.amb_caller_route = amb_caller_route
-    self.caller_hospital_route = caller_hospital_route
-    self.traffic_light_intersection_proximity = traffic_light_intersection_proximity
+    def __init__(self, ambulance, caller, date_time=datetime.now(), order_status=Order_status.PENDING, amb_caller_route=None, caller_hospital_route=None, traffic_light_intersection_proximity=None):
+      self.ambulance = ambulance
+      self.caller = caller
+      self.date_time = date_time
+      self.order_status = order_status
+      self.amb_caller_route = amb_caller_route
+      self.caller_hospital_route = caller_hospital_route
+      self.traffic_light_intersection_proximity = traffic_light_intersection_proximity
 
-class Ambulance(db.Model):
+  class Ambulance(db.Model):
   id = db.Column(db.Integer, primary_key = True)
   latitude = db.Column(db.Double)
   longitude = db.Column(db.Double)
