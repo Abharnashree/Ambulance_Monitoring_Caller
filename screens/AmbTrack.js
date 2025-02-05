@@ -49,7 +49,7 @@ const AmbTrack = ({route}) => {
 
   // Initialize Socket.IO connection
   useEffect(() => {
-    socket.current = io("http://192.168.113.158:5000"); // Replace with your IPv4 wifi URL
+    socket.current = io("http://192.168.47.158:5000"); // Replace with your IPv4 wifi URL
     socket.current.on("connect", () => {
       console.log("Client : Connected to server");
     });

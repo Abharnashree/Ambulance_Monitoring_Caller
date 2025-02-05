@@ -88,7 +88,9 @@ def create_booking():
         caller=caller,
         date_time=datetime.now(),
         order_status=Order_status.IN_PROGRESS,
-        amb_caller_route = from_shape(ambulance_caller_route, srid=4326)
+        amb_caller_route = from_shape(ambulance_caller_route, srid=4326),
+        caller_latitude=caller_lat,
+        caller_longitude=caller_long
     )
 
     proximity = get_proximity(new_booking.amb_caller_route, [traffic_light.location for traffic_light in intersection], 750)
