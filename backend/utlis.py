@@ -60,7 +60,7 @@ def haversine_distance(lat1, lon1, lat2, lon2):
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     return R * c
 
-def get_proximity(linestring, points, buffer_distance=750):
+def get_proximity(linestring, points, buffer_distance=0.01):
 
     query = text("""
         WITH input AS (
@@ -77,7 +77,7 @@ def get_proximity(linestring, points, buffer_distance=750):
                 ) AS segment
             FROM input, points
         )
-        SELECT ST_Collect(segment) AS multilinestring FROM segments;
+        SELECT ST_SetSRID(ST_Collect(segment), 4326) AS multilinestring FROM segments;
     """)
 
     result = db.session.execute(query, {

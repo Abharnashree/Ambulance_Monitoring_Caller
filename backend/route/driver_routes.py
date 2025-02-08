@@ -42,6 +42,9 @@ def update_location():
     # Update the ambulance location
     order = Order.query.get(order_id)
     if order and order.ambulance:
+        if(order.ambulance.latitude == ambulance_lat or order.ambulance.longitude == ambulance_lon):
+            print('ambulance is stagnant')
+            #inform the traffic control room immediately with high priority
         order.ambulance.latitude = ambulance_lat
         order.ambulance.longitude = ambulance_lon
         db.session.commit()
@@ -137,7 +140,7 @@ def find_nearest_hospital_and_route():
     
     caller_hospital_route = LineString(polyline.decode(hospital_route_details['route']))
 
-    route = ST_Segmentize(from_shape(caller_hospital_route, srid=4326), 0.0001)
+    route = ST_Segmentize(from_shape(caller_hospital_route, srid=4326), 0.001) #111m
 
     intersection = TrafficLight.query.filter(
         ST_DWithin(
@@ -150,6 +153,8 @@ def find_nearest_hospital_and_route():
     order = Order.query.filter_by(order_id=order_id).first()
     order.traffic_light_intersection = [traffic_light.id for traffic_light in intersection]
     order.caller_hospital_route = from_shape(caller_hospital_route, srid=4326)
+
+    order.traffic_light_intersection_proximity = get_proximity(order.caller_hospital_route, [traffic_light.location for traffic_light in intersection], 0.01)
 
     db.session.commit()
 
