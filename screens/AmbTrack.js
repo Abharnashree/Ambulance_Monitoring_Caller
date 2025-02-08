@@ -54,7 +54,7 @@ const AmbTrack = ({route}) => {
       console.log("Client : Connected to server");
     });
 
-    
+    if(socket.current) {
     socket.current.on("ambulance_route_update", (data) => {
       console.log("Route update received:", data);
       setAmbulanceDetails((prevDetails) => ({
@@ -62,6 +62,7 @@ const AmbTrack = ({route}) => {
         ...data, // Update route, distance, duration, etc.
       }));
     });
+  }
 
     return () => {
       // Clean up the socket connection on component unmount
@@ -105,17 +106,17 @@ const AmbTrack = ({route}) => {
           title="Ambulance Location"
           description={`Ambulance ID: ${ambulanceDetails.ambulance_id}, Type: ${ambulanceDetails.type}`}
         />
-        <Marker
-      coordinate={{
-        latitude: ambulanceDetails.latitude,
-        longitude: ambulanceDetails.longitude,
-      }}
-      title="Ambulance Location"
-      description={`Ambulance ID: ${ambulanceDetails.ambulance_id}, Type: ${ambulanceDetails.type}`}
-      
-    />
+      {/*  <Marker
+          coordinate={{
+            latitude: ambulanceDetails.latitude,
+            longitude: ambulanceDetails.longitude,
+          }}
+          title="Ambulance Location"
+          description={`Ambulance ID: ${ambulanceDetails.ambulance_id}, Type: ${ambulanceDetails.type}`}
+          
+        /> */}
         {decodedPolyline.length > 0 && (
-          <Polyline coordinates={decodedPolyline} strokeWidth={3} strokeColor="red" />
+          <Polyline coordinates={decodedPolyline} strokeWidth={5} strokeColor="red" />
         )}
       </MapView>
 

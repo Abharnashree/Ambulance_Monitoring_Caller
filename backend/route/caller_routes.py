@@ -158,6 +158,14 @@ def find_nearest_ambulance(caller_lat, caller_long):
 #This update the screen of the users if any movement is noticed from the driver 
 @caller.route('/ambulance/location/update', methods=['POST'])
 def update_ambulance_location():
+    all_keys = redis_client.keys("*")  # Get all keys
+    print("All Redis Keys:", all_keys)
+
+    if f"ambulance:{460}:last_update_timestamp" in all_keys:
+        print("Key exists in Redis")
+    else:
+        print("Key does not exist in Redis")
+
     data = request.json
     ambulance_id = data.get('ambulance_id')
     latitude = data.get('latitude')
@@ -176,38 +184,45 @@ def update_ambulance_location():
         return jsonify({"message": "No active order found for this ambulance!"}), 404
 
     # Get caller's location (destination)
-    caller_lat = order.caller.latitude      # caller location needs to be stored in the db, otherwise this wont work
-    caller_long = order.caller.longitude
+    caller_lat = order.caller_latitude      # caller location needs to be stored in the db, otherwise this wont work
+    caller_long = order.caller_longitude
 
 # Get last known location and timestamp from Redis
     last_location = redis_client.get(f"ambulance:{ambulance_id}:location")
     last_timestamp = redis_client.get(f"ambulance:{ambulance_id}:last_update_timestamp")
-
+    print("FROM UPDATE AMBULANCE",last_location)
+    print("FROM UPDATE AMBULANCE",last_timestamp)
     current_time = datetime.utcnow()
-
+    print("FROM UPDATE AMBULANCE",current_time)
     if last_location and last_timestamp:
-        last_lat, last_long = map(float, last_location.decode('utf-8').split(","))
-        last_timestamp = datetime.strptime(last_timestamp.decode('utf-8'), "%Y-%m-%d %H:%M:%S")
+        print("INSIDE IF----------------")
+        last_lat, last_long = map(float, last_location.split(","))
+        last_timestamp = datetime.strptime(last_timestamp, "%Y-%m-%d %H:%M:%S")
 
         # Calculate distance moved since the last update
         distance_moved = haversine_distance(last_lat, last_long, latitude, longitude)
 
         # If the ambulance not moved more than 10m and it has been more than 3 mins
         if distance_moved < 0.01: 
+            print("IF DISTANCE MOVED LESS THAN 0.01-------------------")
             time_difference = current_time - last_timestamp
             if time_difference > timedelta(minutes=3):  
+                print("IF DIS LESS THAN 0.01 ANDDDDDD TIME GREATER THAN 3 MIN ---------------")
                 socketio.emit('static_ambulance_report', {
                     "ambulance_id": ambulance_id,
                     "message": "Ambulance has been static for more than 3 minutes."
                 }, to=f"dispatcher-{ambulance_id}")  # It should be sent to control static interface
 
         else:
-            
+            print("INSIDE ELSE------------------")
+            print("FROM UPDATE AMBULANCE ",latitude,longitude,caller_lat,caller_long)
+            print("FROM UPDATE AMBULANCE-old route", route_details)
             route_details = get_route_with_directions(latitude, longitude, caller_lat, caller_long)
+            print("FROM UPDATE AMBULANCE-new route", route_details)
             if not route_details:
                 return jsonify({"message": "Unable to fetch route details!"}), 500
 
-     
+            print("BEFORE EMITTING ROUTE UPDATE EVENT")
             socketio.emit('ambulance_route_update', {
                 "ambulance_id": ambulance_id,
                 "route": route_details["route"],  
@@ -215,19 +230,20 @@ def update_ambulance_location():
                 "distance": route_details["distance"]
             }, to=f"caller-{order.caller.phone_no}")
 
-            socketio.emit('ambulance_route_update', {
-                "ambulance_id": ambulance_id,
-                "route": route_details["route"],
-                "duration": route_details["duration"],
-                "distance": route_details["distance"]
-            }, to=f"ambulance-{ambulance_id}")
+          #  socketio.emit('ambulance_route_update', {
+          #      "ambulance_id": ambulance_id,
+          #      "route": route_details["route"],
+          #      "duration": route_details["duration"],
+          #      "distance": route_details["distance"]
+          #  }, to=f"ambulance-{ambulance_id}")
 
     # Cache the updated location in Redis
     redis_client.set(f"ambulance:{ambulance_id}:location", f"{latitude},{longitude}")
+    redis_client.set(f"ambulance:{ambulance_id}:last_update_timestamp", current_time.strftime("%Y-%m-%d %H:%M:%S"))
 
     return jsonify({
         "message": "Ambulance location and route updated successfully!",
-        "route_details": route_details
+        #"route_details": route_details
     }), 200
 
 # @caller.route('/checking', methods=['POST'])
