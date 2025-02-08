@@ -200,6 +200,7 @@ def update_ambulance_location():
         last_timestamp = datetime.strptime(last_timestamp, "%Y-%m-%d %H:%M:%S")
 
         # Calculate distance moved since the last update
+        print("FROM UPDATE AMBULANCE ",last_lat,last_long,latitude,longitude)
         distance_moved = haversine_distance(last_lat, last_long, latitude, longitude)
 
         # If the ambulance not moved more than 10m and it has been more than 3 mins
@@ -216,9 +217,8 @@ def update_ambulance_location():
         else:
             print("INSIDE ELSE------------------")
             print("FROM UPDATE AMBULANCE ",latitude,longitude,caller_lat,caller_long)
-            print("FROM UPDATE AMBULANCE-old route", route_details)
             route_details = get_route_with_directions(latitude, longitude, caller_lat, caller_long)
-            print("FROM UPDATE AMBULANCE-new route", route_details)
+            print("FROM UPDATE AMBULANCE-new route", route_details["route"])
             if not route_details:
                 return jsonify({"message": "Unable to fetch route details!"}), 500
 

@@ -22,7 +22,7 @@ const AmbTrack = ({route}) => {
     longitude: driverDetails.longitude,
   });
   useEffect (() => {
-    console.log("The ambulanceDetails : ----------------------------");
+    console.log("The ambulanceDetails update from USE EFFECTTT : ----------------------------");
     console.log(ambulanceDetails);
   }, [ambulanceDetails]);
 
@@ -39,37 +39,64 @@ const AmbTrack = ({route}) => {
   // Decode polyline whenever the route changes
   useEffect(() => {
     if (ambulanceDetails.route) {
-      const decoded = polyline.decode(ambulanceDetails.route).map((coord) => ({
-        latitude: coord[0],
-        longitude: coord[1],
-      }));
-      setDecodedPolyline(decoded);
+      console.log(" Decoding new polyline:", ambulanceDetails.route);
+      try {
+        const decoded = polyline.decode(ambulanceDetails.route).map((coord) => ({
+          latitude: coord[0],
+          longitude: coord[1],
+        }));
+        setDecodedPolyline(decoded);
+      } catch (error) {
+        console.error(" Error decoding polyline:", error);
+      }
     }
   }, [ambulanceDetails.route]);
 
   // Initialize Socket.IO connection
   useEffect(() => {
-    socket.current = io("http://192.168.47.158:5000"); // Replace with your IPv4 wifi URL
+    // Initialize socket connection
+    socket.current = io("http://192.168.47.158:5000"); // Replace with your IPv4 WiFi URL
+  
     socket.current.on("connect", () => {
-      console.log("Client : Connected to server");
+      console.log(" Client: Connected to server");
     });
-
-    if(socket.current) {
-    socket.current.on("ambulance_route_update", (data) => {
-      console.log("Route update received:", data);
+  
+    socket.current.on("connect_error", (err) => {
+      console.error(" Connection error:", err);
+    });
+  
+    return () => {
+      console.log(" Disconnecting socket...");
+      socket.current.disconnect();
+    };
+  }, []); // Runs only once when component mounts
+  
+  // Event Listener for Route Updates
+  useEffect(() => {
+    if (!socket.current) return;
+  
+    const handleRouteUpdate = (data) => {
+      console.log("ambulance_route_update EVENT RECEIVED -------------------------------------------------------------");
+      console.log(" Route update received:", data);
       setAmbulanceDetails((prevDetails) => ({
         ...prevDetails,
         ...data, // Update route, distance, duration, etc.
       }));
-    });
+    };
+  
+    // Attach event listener
+    socket.current.on("ambulance_route_update", handleRouteUpdate)
+    
   }
 
-    return () => {
-      // Clean up the socket connection on component unmount
-      socket.current.disconnect();
-    };
-  }, []);
-
+  )
+  
+  //  return () => {
+  //    console.log(" Removing event listener for ambulance_route_update...");
+  //    socket.current.off("ambulance_route_update", handleRouteUpdate);
+  //  };
+  //}, []); // Runs once after component mounts
+  
   const handleMapLayout = () => {
     setMapLoaded(true);
   };
