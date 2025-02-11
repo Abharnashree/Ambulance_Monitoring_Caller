@@ -15,13 +15,13 @@ def create_app():
   app = Flask(__name__)
   CORS(app, resources={r"/*": {"origins": "*"}})  # Allow all origins
   
-  app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:Abharna@localhost/ambulance_monitoring'
+  app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:postgres@localhost/ambulance_monitoring'
   app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
   app.config['DEBUG'] = True
 
   # Initialize SocketIO with CORS
   socketio.init_app(app, cors_allowed_origins="*")  # Allow all origins for socket connections
-  logging.getLogger('socketio').setLevel(logging.WARNING)  # Suppress socketio logs below WARNING
+  logging.getLogger('socketio').setLevel(logging.CRITICAL)  # Suppress socketio logs below WARNING
   logging.getLogger('engineio').setLevel(logging.WARNING)
 
   db.init_app(app)    #coupling our app with db now to avoid circular import error
