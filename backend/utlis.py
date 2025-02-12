@@ -94,10 +94,10 @@ def check_proximity(lat, lon, order_id):
     Finds all TrafficLight points within 10 meters of the MultiLineString segment
     that intersects with the given (lat, lon) point in a specific order.
 
-    :param lat: Latitude (double)
+     :param lat: Latitude (double)
     :param lon: Longitude (double)
     :param order_id: Order ID (integer)
-    :return: List of intersecting TrafficLight points
+    :return: List of dicts with traffic light ID, location, and distance (meters).
     """
 
     query = text("""
@@ -117,13 +117,20 @@ def check_proximity(lat, lon, order_id):
             SELECT segment FROM line_segments
             WHERE ST_Intersects(segment, ST_SetSRID(ST_MakePoint(:lat, :lon), 4326))
         )
-        SELECT t.id, t.location 
+
+        SELECT t.id,
+        t.location,
+        ST_Distance(
+            ST_Transform(t.location, 9001), 
+            ST_Transform(ST_SetSRID(ST_MakePoint(:lat, :lon), 4326), 9001)
+        ) AS distance_meters
         FROM public.traffic_light t
         WHERE EXISTS (
             -- Find all TrafficLights within 10 meters of the relevant LineString
             SELECT 1 FROM intersecting_segments s 
             WHERE ST_DWithin(t.location, s.segment, 0.0001)
-        );
+        )
+        ORDER BY distance_meters ASC;
     """)
     
     result = db.session.execute(query, {
@@ -132,6 +139,47 @@ def check_proximity(lat, lon, order_id):
         "order_id": order_id
     }).fetchall()
 
-    print(result)
+    query = text("""
+        WITH order_multilines AS (
+            -- Get MultiLineString for the given order_id
+            SELECT traffic_light_intersection_proximity 
+            FROM public.order
+            WHERE order_id = :order_id
+        ),
+        line_segments AS (
+            -- Extract each LineString from the MultiLineString
+            SELECT ST_GeometryN(traffic_light_intersection_proximity, generate_series(1, ST_NumGeometries(traffic_light_intersection_proximity))) AS segment
+            FROM order_multilines
+        ),
+        intersecting_segments AS (
+            -- Filter LineStrings that intersect with the given Point
+            SELECT segment FROM line_segments
+            WHERE ST_Intersects(segment, ST_SetSRID(ST_MakePoint(:lat, :lon), 4326))
+        ),
+        exploded AS (
+            SELECT (ST_Dump(traffic_light_intersection_proximity)).geom AS line
+            FROM public.order
+            WHERE order_id = :order_id
+        ),
+        filtered AS (
+            SELECT line FROM exploded
+            WHERE NOT EXISTS (
+                SELECT segment FROM intersecting_segments
+                WHERE line = segment
+            )
+        )
 
-    return [{"id": row[0], "location": row[1]} for row in result]  # Return a list of dicts
+        UPDATE public.order
+        SET traffic_light_intersection_proximity = (SELECT ST_Collect(line) FROM filtered)
+        WHERE order_id = :order_id;
+    """)
+
+    db.session.execute(query, {
+        "lat": lat,
+        "lon": lon,
+        "order_id": order_id
+    })
+
+    db.session.commit()
+
+    return [{"id": row[0], "location": row[1], "distance_meters": row[2]} for row in result]  # Return a list of dicts

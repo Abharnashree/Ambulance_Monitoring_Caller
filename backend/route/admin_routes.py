@@ -29,7 +29,7 @@ def test():
     # order = Order.query.filter_by(ambulance_id=230).first()  #update the order id for your testing
     # print(order.amb_caller_route)
 
-    tl = check_proximity(13.03732, 80.21287, 5)
+    tl = check_proximity(13.03542, 80.25712, 4)
     print(tl)
 
     return jsonify("done")
