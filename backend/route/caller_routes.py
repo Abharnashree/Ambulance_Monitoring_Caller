@@ -98,7 +98,9 @@ def create_booking():
     db.session.add(new_booking)
     nearest_ambulance.isAvailable = False  # Mark ambulance as unavailable
     db.session.commit()
-
+    current_time = datetime.utcnow()
+    redis_client.set(f"ambulance:{nearest_ambulance.id}:location", f"{nearest_ambulance.latitude},{nearest_ambulance.longitude}")
+    redis_client.set(f"ambulance:{nearest_ambulance.id}:last_update_timestamp", current_time.strftime("%Y-%m-%d %H:%M:%S"))
     return jsonify({
         "message": "Booking created successfully!",
         # "booking_details": {
@@ -161,7 +163,7 @@ def update_ambulance_location():
     all_keys = redis_client.keys("*")  # Get all keys
     print("All Redis Keys:", all_keys)
 
-    if f"ambulance:{460}:last_update_timestamp" in all_keys:
+    if f"ambulance:{92}:last_update_timestamp" in all_keys:
         print("Key exists in Redis")
     else:
         print("Key does not exist in Redis")
@@ -218,7 +220,7 @@ def update_ambulance_location():
             print("INSIDE ELSE------------------")
             print("FROM UPDATE AMBULANCE ",latitude,longitude,caller_lat,caller_long)
             route_details = get_route_with_directions(latitude, longitude, caller_lat, caller_long)
-            print("FROM UPDATE AMBULANCE-new route", route_details["route"])
+            print("FROM UPDATE AMBULANCE-new route", route_details["distance"],route_details["duration"])
             if not route_details:
                 return jsonify({"message": "Unable to fetch route details!"}), 500
 
@@ -246,17 +248,24 @@ def update_ambulance_location():
         #"route_details": route_details
     }), 200
 
-# @caller.route('/checking', methods=['POST'])
-# def checking():
-#     data=request.json
-#     caller_phone_no=data.get('caller_phone_no')
-#     print("Checking got called")
-#     socketio.emit('driver_details', {
-#         "message": "This is to see if it works"
+@caller.route('/checking', methods=['POST'])
+def checking():
+    data=request.json
+    caller_phone_no=data.get('caller_phone_no')
+    print("Checking got called")
+    socketio.emit('driver_details', {
+        "message": "This is to see if it works"
 
-#     }, to=f"caller-{caller_phone_no}")
-#     return jsonify({
-#         "message": "This is to check " + str(caller_phone_no),
-#     }), 200
+    }, to=f"caller-{caller_phone_no}")
+    return jsonify({
+        "message": "This is to check " + str(caller_phone_no),
+    }), 200
 
+@socketio.on('check_connection')
+def handle_check_connection(data):
+    room = data.get('room')
+    if room in socketio.server.manager.rooms:
+        emit('check_connection_response', {'connected': True}, callback=True)
+    else:
+        emit('check_connection_response', {'connected': False}, callback=True)
 

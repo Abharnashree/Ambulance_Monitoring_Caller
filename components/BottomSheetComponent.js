@@ -43,8 +43,8 @@ const BottomSheetComponent = ({ bottomSheetRef, ambulance, handleSheetChanges })
     >
       <BottomSheetView style={styles.contentContainer}>
         <Text variant="titleLarge">Ambulance</Text>
-        <Text variant="bodyMedium">Arrive In: {ambulance.duration} mins</Text>
-        <Text variant="bodyMedium">Distance: {ambulance.distance} km</Text>
+        <Text variant="bodyMedium">Arrive In: {ambulance.duration}</Text>
+        <Text variant="bodyMedium">Distance: {ambulance.distance}</Text>
         <Text variant="bodyMedium">Ambulance ID: {ambulance.ambulance_id} </Text>
         <View style={styles.divider} />
 

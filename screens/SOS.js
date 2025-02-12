@@ -9,7 +9,7 @@ const SOS = ({ navigation }) => {
   const [location, setLocation] = useState(null);
   const [driverDetails, setDriverDetails] = useState(null); // State to store driver details
   const [phoneNumber, setPhoneNumber] = useState(null);
-  const socket = io('http://192.168.47.158:5000', { transports: ['websocket'] });
+  const socket = io('http://10.11.54.229:5000', { transports: ['websocket'] });
 
   // Effect hook to handle socket connection and disconnection
   useEffect(() => {
@@ -38,13 +38,13 @@ const SOS = ({ navigation }) => {
     });
 
     socket.on("driver_details", (data) => {
-      console.log('Driver details received:', data);
+      //console.log('Driver details received:', data);
       setDriverDetails(data); // Save driver details when received
     });
    
 
     return () => {
-      socket.disconnect(); // Cleanup socket connection on unmount
+      //socket.disconnect(); // Cleanup socket connection on unmount
     };
   }, []);
 
@@ -52,10 +52,13 @@ const SOS = ({ navigation }) => {
   useEffect(() => {
     if (driverDetails && location) {
       console.log("Driver details and location available, navigating...");
+      console.log("Phone number:", phoneNumber);
       console.log("Right before navigating",location);
       navigation.navigate('AmbTrack', {
         driverDetails: driverDetails,
         userLocation: location,
+        phoneNumber: phoneNumber,
+        socket: socket,
       });
     }
   }, [driverDetails, location, navigation]);
@@ -78,13 +81,13 @@ const SOS = ({ navigation }) => {
         return;
       }
 
-      console.log("The location :---------------------------------");
-      console.log(currlocation.coords);
+      //console.log("The location :---------------------------------");
+      //console.log(currlocation.coords);
 
       setLocation(currlocation.coords);
-      console.log("Current location BEFORE API response:", currlocation);
+      //console.log("Current location BEFORE API response:", currlocation);
 
-      const response = await axios.post('http://192.168.47.158:5000/caller/booking', { 
+      const response = await axios.post('http://10.11.54.229:5000/caller/booking', { 
         //use ipconfig and use your own ipv4 address for wifi
         caller_phone_no: phoneNumber, // how to use the o
         latitude: currlocation.coords.latitude,
