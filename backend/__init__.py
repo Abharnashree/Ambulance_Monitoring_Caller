@@ -15,7 +15,7 @@ def create_app():
   app = Flask(__name__)
   CORS(app, resources={r"/*": {"origins": "*"}})  # Allow all origins
   
-  app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:Abharna@localhost/ambulance_monitoring'
+  app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:password@localhost/ambulance_monitoring'
   app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
   app.config['DEBUG'] = True
 

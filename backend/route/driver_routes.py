@@ -45,6 +45,14 @@ def update_location():
         if(order.ambulance.latitude == ambulance_lat or order.ambulance.longitude == ambulance_lon):
             print('ambulance is stagnant')
             #inform the traffic control room immediately with high priority
+
+        intersecting_traffic_lights = check_proximity(ambulance_lat, ambulance_lon, order_id)
+        
+        if(len(intersecting_traffic_lights) > 0){
+            #TO-DO
+            #send information to traffic_control_dashboard
+            console.log(intersecting_traffic_lights)
+        }
         order.ambulance.latitude = ambulance_lat
         order.ambulance.longitude = ambulance_lon
         db.session.commit()
