@@ -99,5 +99,15 @@ class TrafficLight(db.Model):
     self.name = name
     self.location = location
 
+class Driver(db.Model):
+  number_plate = db.Column(db.String(10), primary_key=True)
+  password = db.Column(db.String(255))
+  ambulance_id = db.Column(db.Integer, db.ForeignKey('ambulance.id'), nullable=False)
+
+  def __init__(self, number_plate, password, ambulance_id):
+    self.number_plate = number_plate
+    self.password = password
+    self.ambulance_id = ambulance_id
+
   def __repr__(self):
     return f'<Traffic light : {self.location}'

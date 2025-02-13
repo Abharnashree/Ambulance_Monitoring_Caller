@@ -8,6 +8,9 @@ from shapely.geometry import LineString
 from geoalchemy2.shape import from_shape
 from geoalchemy2.functions import ST_GeomFromText, ST_DWithin, ST_Intersects, ST_Segmentize, ST_Transform, ST_AsText
 import polyline
+import jwt
+import os
+from dotenv import load_dotenv
 
 driver = Blueprint('driver', __name__)
 gmaps = googlemaps.Client(key='AIzaSyDJfABDdpB7fIMs_F4e1IeqKoEQ2BSNSl0')
@@ -17,6 +20,32 @@ Accept Booking and start session - accept_booking
 Reject Booking and clear session - reject_booking
 
 """
+
+@driver.route('/driver/signup', methods=['POST'])
+def driver_signup():
+    data = request.json
+    number_plate=data['number_plate'],
+    password=data['password']
+
+
+    driverEntry = Driver.query.filter_by(number_plate=data['number_plate']).all()
+    if driverEntry:
+        if driverEntry[0].password == password:
+            token = jwt.encode(
+            {
+                'number_plate': number_plate
+            },
+            os.getenv("SECRET_KEY"),
+            algorithm='HS256'
+            )
+
+            return jsonify({"token":token,"status":"success"}),200
+        else:
+            return jsonify({"message": "Invalid password","status":"fail"}), 401
+    else:
+        return jsonify({"message": "Driver not found","status":"fail"}), 404
+    
+
 
 @driver.route('/driver/bookings', methods=['GET'])
 def get_bookings():
