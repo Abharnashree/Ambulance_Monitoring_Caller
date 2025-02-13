@@ -4,12 +4,15 @@ import { io } from 'socket.io-client';
 import * as Location from 'expo-location';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
+const IP = Constants.expoConfig.extra.IP;
+console.log("IP ADDRESS",IP);
 
 const SOS = ({ navigation }) => {
   const [location, setLocation] = useState(null);
   const [driverDetails, setDriverDetails] = useState(null); // State to store driver details
   const [phoneNumber, setPhoneNumber] = useState(null);
-  const socket = io('http://10.11.54.229:5000', { transports: ['websocket'] });
+  const socket = io(`http://${IP}:5000`, { transports: ['websocket'] });
 
   // Effect hook to handle socket connection and disconnection
   useEffect(() => {
@@ -87,7 +90,7 @@ const SOS = ({ navigation }) => {
       setLocation(currlocation.coords);
       //console.log("Current location BEFORE API response:", currlocation);
 
-      const response = await axios.post('http://10.11.54.229:5000/caller/booking', { 
+      const response = await axios.post(`http://${IP}:5000/caller/booking`, { 
         //use ipconfig and use your own ipv4 address for wifi
         caller_phone_no: phoneNumber, // how to use the o
         latitude: currlocation.coords.latitude,

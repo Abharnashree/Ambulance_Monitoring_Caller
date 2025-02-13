@@ -42,14 +42,9 @@ export default{
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra":{
+      IP: process.env.IP,  
     }
   },
-  "extra" :{
-    firebaseApiKey: "AIzaSyAMpO3wpPjo0U8zUqvY9aNIKYJfKK82vRg",
-    firebaseAuthDomain: "ambulancemonitoring-8390b.firebaseapp.com",
-    firebaseProjectId: "ambulancemonitoring-8390b",
-    firebaseStorageBucket: "ambulancemonitoring-8390b.appspot.com",
-    firebaseMessagingSenderId: "576771360683",
-    firebaseAppId: "1:576771360683:web:a349f499c4c9ab236634ee"
-  }
 }

@@ -229,15 +229,10 @@ def update_ambulance_location():
                 "ambulance_id": ambulance_id,
                 "route": route_details["route"],  
                 "duration": route_details["duration"],
-                "distance": route_details["distance"]
+                "distance": route_details["distance"],
+                "latitude":latitude,
+                "longitude":longitude
             }, to=f"caller-{order.caller.phone_no}")
-
-          #  socketio.emit('ambulance_route_update', {
-          #      "ambulance_id": ambulance_id,
-          #      "route": route_details["route"],
-          #      "duration": route_details["duration"],
-          #      "distance": route_details["distance"]
-          #  }, to=f"ambulance-{ambulance_id}")
 
     # Cache the updated location in Redis
     redis_client.set(f"ambulance:{ambulance_id}:location", f"{latitude},{longitude}")

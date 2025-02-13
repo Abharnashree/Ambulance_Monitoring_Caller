@@ -4,6 +4,8 @@ import { Text, TextInput, Button } from 'react-native-paper';
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
+const IP = Constants.expoConfig.extra.IP;
 
 const SignupScreen = ({ navigation }) => {
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -14,7 +16,7 @@ const SignupScreen = ({ navigation }) => {
 
   const handleSendVerificationCode = async () => {
     try {
-      const response = await axios.post('http://192.168.47.158:5000/sendOtp',{
+      const response = await axios.post(`http://${IP}:5000/sendOtp`,{
         phoneNumber,
       });
       if (response.data.status === 'OTP sent') {
@@ -32,7 +34,7 @@ const SignupScreen = ({ navigation }) => {
   const handleVerifyVerificationCode = async () => {
     try {
       // Ensure token is available in the response
-      const response = await axios.post('http://192.168.47.158:5000/verifyOtp', {
+      const response = await axios.post(`http://${IP}:5000/verifyOtp`, {
         verificationCode,
         phoneNumber,
         name,

@@ -5,6 +5,8 @@ import { Marker, Polyline } from 'react-native-maps';
 import MapView from 'react-native-maps';
 import polyline from '@mapbox/polyline';
 import BottomSheetComponent from '../components/BottomSheetComponent';
+import Constants from 'expo-constants';
+const IP = Constants.expoConfig.extra.IP;
 
 const AmbTrack = ({ route }) => {
   const { driverDetails, userLocation, socket ,phoneNumber} = route.params;
@@ -48,6 +50,7 @@ const AmbTrack = ({ route }) => {
 
   useEffect(() => {
     if (!socket) return;
+    console.log("PRINTING SOCKET FROM AMBTRACK :-----------------------",socket);
 
     const handleRouteUpdate = (data) => {
       console.log("Route update received:", data);
@@ -56,7 +59,7 @@ const AmbTrack = ({ route }) => {
         ...data,
       }));
     };
-    // socket.emit('join_room', { room: `caller-${phoneNumber}` });
+    socket.emit('join_room', { room: `caller-${phoneNumber}` });
     socket.on("ambulance_route_update", handleRouteUpdate);
 
     return () => {
