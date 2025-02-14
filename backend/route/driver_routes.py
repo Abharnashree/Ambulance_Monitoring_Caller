@@ -8,6 +8,7 @@ from shapely.geometry import LineString
 from geoalchemy2.shape import from_shape
 from geoalchemy2.functions import ST_GeomFromText, ST_DWithin, ST_Intersects, ST_Segmentize, ST_Transform, ST_AsText
 import polyline
+import time
 
 driver = Blueprint('driver', __name__)
 gmaps = googlemaps.Client(key='AIzaSyDJfABDdpB7fIMs_F4e1IeqKoEQ2BSNSl0')
@@ -44,21 +45,37 @@ def update_location():
     if order and order.ambulance:
         if(order.ambulance.latitude == ambulance_lat or order.ambulance.longitude == ambulance_lon):
             print('ambulance is stagnant')
-            #inform the traffic control room immediately with high priority
+            query = text("""
+                SELECT t.id FROM public.traffic_light t
+                WHERE ST_DWithin(ST_SetSRID(ST_MakePoint(:lat, :lon), 4326), t.location, 0.001)
+            """)
+            result = db.session.execute(query, {
+                "lat" : ambulance_lat,
+                "lon" : ambulance_lon
+            }).fetchone()
 
+            traffic_id = result[0] if result else None
+
+            socketio.emit('ambulance_signal_update', {"order_id" : order.order_id, "signal_id" : traffic_id, "timestamp" : time.time()}, room="dashboard")
+            
         intersecting_traffic_lights = check_proximity(ambulance_lat, ambulance_lon, order_id)
         
         if(len(intersecting_traffic_lights) > 0):
             #TO-DO
             #send information to traffic_control_dashboard
             print(intersecting_traffic_lights)
+            
+            for traffic_light in intersecting_traffic_lights:
+                timestamp = time.time() + traffic_light.get("distance_meters")/(40*1000/(60*60)) #40kmph
+                update = {"order_id" : order_id, "signal_id" : traffic_light.get("id"), "timestamp": timestamp }
+                socketio.emit("ambulance_signal_update", update, room="dashboard")
 
             
         order.ambulance.latitude = ambulance_lat
         order.ambulance.longitude = ambulance_lon
         db.session.commit()
 
-        current_time = datetime.datetime.utcnow()
+        current_time = datetime.utcnow()
         redis_client.set(f"ambulance:{order_id}:location", f"{ambulance_lat},{ambulance_lon}")
         redis_client.set(f"ambulance:{order_id}:last_update_timestamp", current_time.strftime("%Y-%m-%d %H:%M:%S"))
        

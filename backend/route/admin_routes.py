@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, render_template
 import requests
 from ..models import *
-from ..extensions import db
+from ..extensions import db, socketio
 from geoalchemy2.shape import from_shape
 from geoalchemy2.functions import ST_GeomFromText, ST_DWithin, ST_Intersects, ST_Segmentize, ST_Transform, ST_AsText
 from shapely.geometry import Point
@@ -29,8 +29,8 @@ def test():
     # order = Order.query.filter_by(ambulance_id=230).first()  #update the order id for your testing
     # print(order.amb_caller_route)
 
-    tl = check_proximity(13.03542, 80.25712, 4)
-    print(tl)
+    data = {'order_id' : 3, 'signal_id' : 1, 'timestamp' : 1707815600}
+    socketio.emit('ambulance_signal_update',data, room="dashboard")
 
     return jsonify("done")
 
@@ -136,9 +136,6 @@ def init_db_with_dummy_data():
                 )
                 db.session.add(traffic_light)
 
-
-    
-    
     db.session.add_all(ambulances)
     db.session.add_all(callers)
     db.session.add_all(orders)
