@@ -29,7 +29,7 @@ def handle_join_room(data):
     """
     room = data.get('room')
     join_room(room)
-    print(f"Client joined room: {room}")
+    print(f"CLIENT JOINED ROOMMMMMMMMMMMMMMMM: {room}")
 
 '''When using phone's gps, it'll automatically send location updates every few secs
    So the location data is just fetched from driver frontend to backend, and sent to caller frontend'''

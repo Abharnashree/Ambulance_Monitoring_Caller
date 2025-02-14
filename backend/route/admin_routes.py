@@ -136,17 +136,33 @@ def init_db_with_dummy_data():
                 )
                 db.session.add(traffic_light)
 
+
+    drivers = [
+    Driver("TN01AB1234", "driver123", 46),
+    Driver("TN02CD5678", "driver456", 92),
+    Driver("TN03EF9012", "driver789", 276),
+    Driver("TN04GH3456", "driver234", 414),
+    Driver("TN05IJ7890", "driver567", 368),
+    Driver("TN06KL1234", "driver890", 460),
+    Driver("TN07MN5678", "driver321", 184),
+    Driver("TN08OP9012", "driver654", 230),
+    Driver("TN09QR3456", "driver987", 138),
+    Driver("TN10ST7890", "driver111", 322),
+    ]
+    
     db.session.add_all(ambulances)
     db.session.add_all(callers)
     db.session.add_all(orders)
     db.session.add_all(hospitals)
+    db.session.add_all(drivers)
 
     db.session.commit() 
     return jsonify({
         "ambulances": [ambulance.id for ambulance in ambulances],
         "callers": [caller.phone_no for caller in callers],
         "orders" : [order.order_id for order in orders],
-        "hospitals": [hospital.name for hospital in hospitals]
+        "hospitals": [hospital.name for hospital in hospitals],
+        "drivers": [driver.number_plate for driver in drivers]
     })
 
 @admin.route('/update_ambulance/<int:ambulance_id>', methods=['PUT'])

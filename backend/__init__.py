@@ -1,7 +1,7 @@
 from flask import Flask
 from flask_cors import CORS 
 from .extensions import db, sess, redis_client
-from .events import socketio
+from .events import socketio, handle_join_room
 from .views import main
 from .route.caller_routes import caller
 from .route.admin_routes import admin
@@ -10,12 +10,19 @@ from .route.driver_routes import driver
 from .route.auth_routes import auth
 import threading
 import logging
+from dotenv import load_dotenv
+import os
+
+load_dotenv()  
+
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+print("DATABASE PASSWORD",DB_PASSWORD)
 
 def create_app():
   app = Flask(__name__)
   CORS(app, resources={r"/*": {"origins": "*"}})  # Allow all origins
   
-  app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:password@localhost/ambulance_monitoring'
+  app.config['SQLALCHEMY_DATABASE_URI'] = f'postgresql://postgres:{DB_PASSWORD}@localhost/ambulance_monitoring'
   app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
   app.config['DEBUG'] = True
 
