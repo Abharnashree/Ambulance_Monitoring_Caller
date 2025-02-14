@@ -11,6 +11,10 @@ rooms = {}
 def handle_connect():
     print("Client connected!")
 
+@socketio.on("disconnect")
+def handle_connect():
+    print("Client disconnected!")
+
 @socketio.on("my event")
 def handle_message(data):
     print(data)

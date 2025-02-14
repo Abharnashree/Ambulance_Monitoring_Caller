@@ -43,7 +43,7 @@ def update_location():
     # Update the ambulance location
     order = Order.query.get(order_id)
     if order and order.ambulance:
-        if(order.ambulance.latitude == ambulance_lat or order.ambulance.longitude == ambulance_lon):
+        if(order.ambulance.latitude == ambulance_lat and order.ambulance.longitude == ambulance_lon):
             print('ambulance is stagnant')
             query = text("""
                 SELECT t.id FROM public.traffic_light t
@@ -55,14 +55,27 @@ def update_location():
             }).fetchone()
 
             traffic_id = result[0] if result else None
-
+           
             socketio.emit('ambulance_signal_update', {"order_id" : order.order_id, "signal_id" : traffic_id, "timestamp" : time.time()}, room="dashboard")
-            
+        
+        query = text("""
+            SELECT t.id FROM public.traffic_light t
+            WHERE ST_DWithin(ST_SetSRID(ST_MakePoint(:lat, :lon), 4326), t.location, 0.0001)
+        """)
+        result = db.session.execute(query, {
+            "lat" : ambulance_lat,
+            "lon" : ambulance_lon
+        }).fetchone()
+
+        traffic_id = result[0] if result else None
+
+        if traffic_id is not None:
+            socketio.emit('ambulance_signal_crossed', {"order_id" : order.order_id, "signal_id" : traffic_id}, room="dashboard")
+
         intersecting_traffic_lights = check_proximity(ambulance_lat, ambulance_lon, order_id)
+        print(intersecting_traffic_lights)
         
         if(len(intersecting_traffic_lights) > 0):
-            #TO-DO
-            #send information to traffic_control_dashboard
             print(intersecting_traffic_lights)
             
             for traffic_light in intersecting_traffic_lights:
