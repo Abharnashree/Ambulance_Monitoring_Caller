@@ -103,15 +103,6 @@ def create_booking():
     redis_client.set(f"ambulance:{nearest_ambulance.id}:last_update_timestamp", current_time.strftime("%Y-%m-%d %H:%M:%S"))
     return jsonify({
         "message": "Booking created successfully!",
-        # "booking_details": {
-        #     "order_id": new_booking.order_id,
-        #     "caller_phone_no": caller_phone_no,
-        #     "ambulance_id": nearest_ambulance.id,
-        #     "date_time": new_booking.date_time.strftime("%Y-%m-%d %H:%M:%S"),
-        #     "route": route_details["route"],  
-        #     "duration": route_details["duration"],  
-        #     "distance": route_details["distance"],
-        # }
     }), 201
 
 # Function to find nearest ambulance
@@ -156,6 +147,18 @@ def find_nearest_ambulance(caller_lat, caller_long):
         radius += step
 
     return nearest_ambulance
+
+@caller.route("/submit_patient_details", methods=["POST"])
+def submit_patient_details():
+    data = request.json
+    
+    if not data:
+        return {"error": "Invalid data"}, 400
+    
+    # Emit data to all connected clients
+    socketio.emit("patient_details", data, room="patients")
+    
+    return {"message": "Patient details submitted successfully."}, 200
 
 #This update the screen of the users if any movement is noticed from the driver 
 @caller.route('/ambulance/location/update', methods=['POST'])

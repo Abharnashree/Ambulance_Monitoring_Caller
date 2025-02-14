@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Text, View, StyleSheet, TextInput, Button, Alert } from 'react-native';
 import { RadioButton } from 'react-native-paper';
 import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
+import Constants from 'expo-constants';
+const IP = Constants.expoConfig.extra.IP;
 
 const BottomSheetComponent = ({ bottomSheetRef, ambulance, handleSheetChanges }) => {
   const [name, setName] = useState('');
@@ -16,25 +18,34 @@ const BottomSheetComponent = ({ bottomSheetRef, ambulance, handleSheetChanges })
     return regex.test(phone);
   };
 
-  const handleSubmit = () => {
-    if (contact && !validatePhoneNumber(contact)) {
-      Alert.alert('Invalid Contact Number', 'Please enter a valid 10-digit phone number.');
-      return;
-    }
-
-    // Here you can handle the submission (e.g., API call)
-    console.log({
+  const handleSubmit = async () => {
+    const patientData = {
       name,
       victims,
       nature,
       age,
       gender,
       contact,
-    });
-    setFormVisible(false);
-    Alert.alert('Submitted', 'Details have been submitted successfully.');
+    };
+  
+    try {
+      const response = await fetch(`http://${IP}:5000/submit_patient_details`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(patientData),
+      });
+  
+      const result = await response.json();
+      Alert.alert("Success", result.message);
+    } catch (error) {
+      console.error("Error submitting details:", error);
+      Alert.alert("Error", "Failed to submit details. Please try again.");
+    }
   };
 
+  
   return (
     <BottomSheet
       ref={bottomSheetRef}

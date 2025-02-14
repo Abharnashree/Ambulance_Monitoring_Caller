@@ -1,7 +1,7 @@
 from flask import Flask
 from flask_cors import CORS 
 from .extensions import db, sess, redis_client
-from .events import socketio
+from .events import socketio, handle_join_room
 from .views import main
 from .route.caller_routes import caller
 from .route.admin_routes import admin
