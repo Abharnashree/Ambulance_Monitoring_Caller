@@ -148,17 +148,7 @@ def find_nearest_ambulance(caller_lat, caller_long):
 
     return nearest_ambulance
 
-@caller.route("/submit_patient_details", methods=["POST"])
-def submit_patient_details():
-    data = request.json
-    
-    if not data:
-        return {"error": "Invalid data"}, 400
-    
-    # Emit data to all connected clients
-    socketio.emit("patient_details", data, room="patients")
-    
-    return {"message": "Patient details submitted successfully."}, 200
+
 
 #This update the screen of the users if any movement is noticed from the driver 
 @caller.route('/ambulance/location/update', methods=['POST'])

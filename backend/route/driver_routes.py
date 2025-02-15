@@ -46,7 +46,17 @@ def driver_signup():
     else:
         return jsonify({"message": "Driver not found","status":"fail"}), 404
     
-
+@driver.route("/submit_patient_details", methods=["POST"])
+def submit_patient_details():
+    data = request.json
+    
+    if not data:
+        return {"error": "Invalid data"}, 400
+    
+    # Emit data to all connected clients
+    socketio.emit("patient_details", data)
+    
+    return {"message": "Patient details submitted successfully."}, 200
 
 @driver.route('/driver/bookings', methods=['GET'])
 def get_bookings():
