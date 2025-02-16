@@ -71,7 +71,7 @@ def create_booking():
         "route": route_details['route'],  
         "duration": route_details["duration"],  
         "distance": route_details["distance"] 
-    }, to=f"ambulance-{nearest_ambulance.id}")
+    }, to="ambulance")
 
     route = ST_Segmentize(from_shape(ambulance_caller_route, srid=4326), 0.01) #0.01 degrees = 1.11 kilometers
 
@@ -99,6 +99,7 @@ def create_booking():
     nearest_ambulance.isAvailable = False  # Mark ambulance as unavailable
     db.session.commit()
     current_time = datetime.utcnow()
+    print("AMBULANCE IDDDDDDDDDDDD---------------------",nearest_ambulance.id)
     redis_client.set(f"ambulance:{nearest_ambulance.id}:location", f"{nearest_ambulance.latitude},{nearest_ambulance.longitude}")
     redis_client.set(f"ambulance:{nearest_ambulance.id}:last_update_timestamp", current_time.strftime("%Y-%m-%d %H:%M:%S"))
     return jsonify({
@@ -163,6 +164,7 @@ def update_ambulance_location():
 
     data = request.json
     ambulance_id = data.get('ambulance_id')
+    print("AMBULANCEEEEEE IDDDDDDDDDDDDDD-------------------",ambulance_id)
     latitude = data.get('latitude')
     longitude = data.get('longitude')
 
@@ -227,6 +229,14 @@ def update_ambulance_location():
                 "longitude":longitude
             }, to=f"caller-{order.caller.phone_no}")
 
+            socketio.emit('ambulance_route_update_driver', {
+                "route": route_details["route"],  
+                "duration": route_details["duration"],
+                "distance": route_details["distance"],
+                "latitude":latitude,
+                "longitude":longitude
+            }, to="ambulance")
+
     # Cache the updated location in Redis
     redis_client.set(f"ambulance:{ambulance_id}:location", f"{latitude},{longitude}")
     redis_client.set(f"ambulance:{ambulance_id}:last_update_timestamp", current_time.strftime("%Y-%m-%d %H:%M:%S"))
@@ -256,4 +266,3 @@ def handle_check_connection(data):
         emit('check_connection_response', {'connected': True}, callback=True)
     else:
         emit('check_connection_response', {'connected': False}, callback=True)
-

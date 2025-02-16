@@ -29,7 +29,7 @@ def create_app():
   # Initialize SocketIO with CORS
   socketio.init_app(app, cors_allowed_origins="*")  # Allow all origins for socket connections
   logging.getLogger('socketio').setLevel(logging.CRITICAL)  # Suppress socketio logs below WARNING
-  logging.getLogger('engineio').setLevel(logging.WARNING)
+  logging.getLogger('engineio').setLevel(logging.CRITICAL)  # Suppress engineio logs below WARNING
 
   db.init_app(app)    #coupling our app with db now to avoid circular import error
 
