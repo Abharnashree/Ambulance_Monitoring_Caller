@@ -66,6 +66,7 @@ def create_booking():
     print("Sent details to caller")
     # Send patient location to the ambulance driver's frontend
     socketio.emit('patient_location', {
+        "ambulance_id":nearest_ambulance.id,
         "latitude": caller_lat,
         "longitude": caller_long,
         "route": route_details['route'],  
@@ -167,6 +168,8 @@ def update_ambulance_location():
     print("AMBULANCEEEEEE IDDDDDDDDDDDDDD-------------------",ambulance_id)
     latitude = data.get('latitude')
     longitude = data.get('longitude')
+    picked_up = data.get('picked_up')
+    hospital_id = data.get('hospital_id')
 
     if not ambulance_id or not latitude or not longitude:
         return jsonify({"message": "ambulance_id, latitude, and longitude are required!"}), 400
@@ -180,9 +183,14 @@ def update_ambulance_location():
     if not order:
         return jsonify({"message": "No active order found for this ambulance!"}), 404
 
+    if picked_up:
+        hospital=Hospital.query.get(hospital_id)
+        lat=hospital.latitude
+        long=hospital.longitude
     # Get caller's location (destination)
-    caller_lat = order.caller_latitude      # caller location needs to be stored in the db, otherwise this wont work
-    caller_long = order.caller_longitude
+    else:
+        lat = order.caller_latitude      # caller location needs to be stored in the db, otherwise this wont work
+        long = order.caller_longitude
 
 # Get last known location and timestamp from Redis
     last_location = redis_client.get(f"ambulance:{ambulance_id}:location")
@@ -213,8 +221,8 @@ def update_ambulance_location():
 
         else:
             print("INSIDE ELSE------------------")
-            print("FROM UPDATE AMBULANCE ",latitude,longitude,caller_lat,caller_long)
-            route_details = get_route_with_directions(latitude, longitude, caller_lat, caller_long)
+            print("FROM UPDATE AMBULANCE ",latitude,longitude,lat,long)
+            route_details = get_route_with_directions(latitude, longitude, lat,long)
             print("FROM UPDATE AMBULANCE-new route", route_details["distance"],route_details["duration"])
             if not route_details:
                 return jsonify({"message": "Unable to fetch route details!"}), 500
