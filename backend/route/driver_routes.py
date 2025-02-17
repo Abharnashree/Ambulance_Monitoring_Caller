@@ -256,3 +256,20 @@ def find_nearest_hospital_and_route():
         print("ERRORRRRR -------",str(e))
         return jsonify({"message": str(e)}), 500
     
+@driver.route('/driver/completed', methods=['POST'])
+def completed():
+    data=request.json
+    ambulance_id = data.get('ambulance_id')
+    if not ambulance_id:
+        return jsonify({"error": "Ambulance ID is required"}), 400
+    order = Order.query.filter_by(ambulance_id=ambulance_id, order_status="IN_PROGRESS").first()
+    if not order:
+        return jsonify({"error": "No active order found for this ambulance"}), 404
+    order.order_status = Order_status.COMPLETED
+
+    ambulance = Ambulance.query.get(ambulance_id)
+    if ambulance:
+        ambulance.isAvailable = True
+
+    db.session.commit()
+    return jsonify({"message": "Order marked as completed successfully"}), 200
