@@ -240,6 +240,8 @@ def find_nearest_hospital_and_route():
 
         db.session.commit()
 
+        socketio.emit('PICKED_UP', to=f"caller-{order.caller.phone_no}")
+
         # Return the nearest hospital details and the route information
         return jsonify({
             "hospital_name": nearest_hospital.name,

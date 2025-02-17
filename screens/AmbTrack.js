@@ -7,6 +7,7 @@ import polyline from '@mapbox/polyline';
 import BottomSheetComponent from '../components/BottomSheetComponent';
 import Constants from 'expo-constants';
 const IP = Constants.expoConfig.extra.IP;
+import { Text } from 'react-native';
 
 const AmbTrack = ({ route }) => {
   const { driverDetails, userLocation, socket ,phoneNumber} = route.params;
@@ -26,6 +27,7 @@ const AmbTrack = ({ route }) => {
 
   const [decodedPolyline, setDecodedPolyline] = useState([]);
   const [mapLoaded, setMapLoaded] = useState(false);
+  const[pickedUp, setPickedUp]=useState(false);
   const bottomSheetRef = useRef(null);
 
   useEffect(() => {
@@ -62,6 +64,10 @@ const AmbTrack = ({ route }) => {
     socket.emit('join_room', { room: `caller-${phoneNumber}` });
     socket.on("ambulance_route_update", handleRouteUpdate);
 
+    socket.on("PICKED_UP", () => {
+      setPickedUp(true)
+    });
+
     return () => {
       socket.off("ambulance_route_update", handleRouteUpdate);
     };
@@ -72,7 +78,15 @@ const AmbTrack = ({ route }) => {
   };
 
 
-  return (
+console.log("PICKED UP:",pickedUp);
+    if(pickedUp){
+      return(
+      <View style={styles.messageContainer}>
+        <Text style={styles.messageText}>COMPLETED !!!</Text>
+      </View>
+      );
+    }else{
+      return(
     <View style={styles.container}>
       <MapView
         style={styles.map}
@@ -103,6 +117,7 @@ const AmbTrack = ({ route }) => {
       )}
     </View>
   );
+}
 };
 
 const styles = StyleSheet.create({
@@ -113,6 +128,16 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  messageContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  messageText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: 'red',
+  }
 });
 
 export default AmbTrack;
