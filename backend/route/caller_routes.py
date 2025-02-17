@@ -11,6 +11,7 @@ from shapely.geometry import LineString
 from geoalchemy2.shape import from_shape
 from geoalchemy2.functions import ST_GeomFromText, ST_DWithin, ST_Intersects, ST_Segmentize, ST_Transform, ST_AsText
 import polyline
+import time
 
 
 caller = Blueprint('caller', __name__)
@@ -214,10 +215,32 @@ def update_ambulance_location():
             time_difference = current_time - last_timestamp
             if time_difference > timedelta(minutes=3):  
                 print("IF DIS LESS THAN 0.01 ANDDDDDD TIME GREATER THAN 3 MIN ---------------")
+                query = text("""
+                SELECT t.id FROM public.traffic_light t
+                WHERE ST_DWithin(ST_SetSRID(ST_MakePoint(:lat, :lon), 4326), t.location, 0.001)
+                """)
+                result = db.session.execute(query, {
+                    "lat" : latitude,
+                    "lon" : longitude
+                }).fetchone()
+
+                traffic_id = result[0] if result else None
+
                 socketio.emit('static_ambulance_report', {
+                    "order_id" : order.order_id,
                     "ambulance_id": ambulance_id,
-                    "message": "Ambulance has been static for more than 3 minutes."
+                    "message": "Ambulance has been static for more than 3 minutes.",
+                    "signal_id" : traffic_id,
+                    "timestamp" : time.time()
                 }, to=f"dispatcher-{ambulance_id}")  # It should be sent to control static interface
+
+                socketio.emit('static_ambulance_report', {
+                    "order_id" : order.order_id,
+                    "ambulance_id": ambulance_id,
+                    "message": "Ambulance has been static for more than 3 minutes.",
+                    "signal_id" : traffic_id,
+                    "timestamp" : time.time()
+                }, to="dashboard")  # It should be sent to control static interface
 
         else:
             print("INSIDE ELSE------------------")
@@ -236,6 +259,33 @@ def update_ambulance_location():
                 "latitude":latitude,
                 "longitude":longitude
             }, to=f"caller-{order.caller.phone_no}")
+
+    
+    query = text("""
+        SELECT t.id FROM public.traffic_light t
+        WHERE ST_DWithin(ST_SetSRID(ST_MakePoint(:lat, :lon), 4326), t.location, 0.0001)
+    """)
+    result = db.session.execute(query, {
+        "lat" : latitude,
+        "lon" : longitude
+    }).fetchone()
+
+    traffic_id = result[0] if result else None
+
+    if traffic_id is not None:
+        socketio.emit('ambulance_signal_crossed', {"order_id" : order.order_id, "signal_id" : traffic_id}, room="dashboard")
+
+    intersecting_traffic_lights = check_proximity(latitude, longitude, order.order_id)
+    print(intersecting_traffic_lights)
+    
+    if(len(intersecting_traffic_lights) > 0):
+        print(intersecting_traffic_lights)
+        
+        for traffic_light in intersecting_traffic_lights:
+            timestamp = time.time() + traffic_light.get("distance_meters")/(40*1000/(60*60)) #40kmph
+            update = {"order_id" : order.order_id, "signal_id" : traffic_light.get("id"), "timestamp": timestamp }
+            socketio.emit("ambulance_signal_update", update, room="dashboard")
+
 
     # Cache the updated location in Redis
     redis_client.set(f"ambulance:{ambulance_id}:location", f"{latitude},{longitude}")
