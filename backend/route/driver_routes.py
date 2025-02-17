@@ -46,7 +46,17 @@ def driver_signup():
     else:
         return jsonify({"message": "Driver not found","status":"fail"}), 404
     
-
+@driver.route("/submit_patient_details", methods=["POST"])
+def submit_patient_details():
+    data = request.json
+    
+    if not data:
+        return {"error": "Invalid data"}, 400
+    
+    # Emit data to all connected clients
+    socketio.emit("patient_details", data)
+    
+    return {"message": "Patient details submitted successfully."}, 200
 
 @driver.route('/driver/bookings', methods=['GET'])
 def get_bookings():
@@ -183,54 +193,83 @@ def find_nearest_hospital(caller_lat, caller_long):
 
 @driver.route('/ambulance/nearest_hospital', methods=['POST'])
 def find_nearest_hospital_and_route():
-    data = request.json
-    order_id = data.get('order_id')
-    ambulance_lat = data.get('latitude')
-    ambulance_long = data.get('longitude')
+    print("HI")
+    try:
+        print("HELLO")
+        data = request.json
+        ambulance_id = data.get('ambulance_id')
+        ambulance_lat = data.get('ambulance_latitude')
+        ambulance_long = data.get('ambulance_longitude')
+        print("DATA FROM NEAREST_HOSPITAL:-------------------",data)
+        if not ambulance_lat or not ambulance_long:
+            return jsonify({"message": "latitude and longitude are required!"}), 400
 
-    if not ambulance_lat or not ambulance_long:
-        return jsonify({"message": "latitude and longitude are required!"}), 400
+        # Find the nearest hospital from the ambulance's current location
+        nearest_hospital = find_nearest_hospital(ambulance_lat, ambulance_long)
 
-    # Find the nearest hospital from the ambulance's current location
-    nearest_hospital = find_nearest_hospital(ambulance_lat, ambulance_long)
+        if not nearest_hospital:
+            return jsonify({"message": "No available hospital found nearby!"}), 404
 
-    if not nearest_hospital:
-        return jsonify({"message": "No available hospital found nearby!"}), 404
-
-    # Generate the route from the ambulance to the nearest hospital
-    hospital_route_details = get_route_with_directions(
-        ambulance_lat, ambulance_long,
-        nearest_hospital.latitude, nearest_hospital.longitude
-    )
-
-    if hospital_route_details is None:
-        return jsonify({"message": "No route generated to hospital!"}), 400
-    
-    caller_hospital_route = LineString(polyline.decode(hospital_route_details['route']))
-
-    route = ST_Segmentize(from_shape(caller_hospital_route, srid=4326), 0.001) #111m
-
-    intersection = TrafficLight.query.filter(
-        ST_DWithin(
-            ST_Transform(TrafficLight.location, 3857),
-            ST_Transform(route, 3857),
-            10 # within 10 meters
+        # Generate the route from the ambulance to the nearest hospital
+        hospital_route_details = get_route_with_directions(
+            ambulance_lat, ambulance_long,
+            nearest_hospital.latitude, nearest_hospital.longitude
         )
-    ).all()
 
-    order = Order.query.filter_by(order_id=order_id).first()
-    order.traffic_light_intersection = [traffic_light.id for traffic_light in intersection]
-    order.caller_hospital_route = from_shape(caller_hospital_route, srid=4326)
+        if hospital_route_details is None:
+            return jsonify({"message": "No route generated to hospital!"}), 400
+        
+        caller_hospital_route = LineString(polyline.decode(hospital_route_details['route']))
 
-    order.traffic_light_intersection_proximity = get_proximity(order.caller_hospital_route, [traffic_light.location for traffic_light in intersection], 0.01)
+        route = ST_Segmentize(from_shape(caller_hospital_route, srid=4326), 0.001) #111m
+
+        intersection = TrafficLight.query.filter(
+            ST_DWithin(
+                ST_Transform(TrafficLight.location, 3857),
+                ST_Transform(route, 3857),
+                10 # within 10 meters
+            )
+        ).all()
+
+
+        order = Order.query.filter_by(ambulance_id=ambulance_id, order_status="IN_PROGRESS").first()
+        order.traffic_light_intersection = [traffic_light.id for traffic_light in intersection]
+        order.caller_hospital_route = from_shape(caller_hospital_route, srid=4326)
+
+        order.traffic_light_intersection_proximity = get_proximity(order.caller_hospital_route, [traffic_light.location for traffic_light in intersection], 0.01)
+
+        db.session.commit()
+
+        # Return the nearest hospital details and the route information
+        return jsonify({
+            "hospital_name": nearest_hospital.name,
+            "hospital_id": nearest_hospital.id,
+            "route": hospital_route_details["route"],
+            "duration": hospital_route_details["duration"],
+            "distance": hospital_route_details["distance"],
+            "latitude": nearest_hospital.latitude,
+            "longitude": nearest_hospital.longitude
+        }), 200
+    except Exception as e:
+        print("BYE")
+        logging.error(f"ERRORRRRRRRRRRRR INNNNNN /ambulance/nearest_hospital: {str(e)}")
+        print("ERRORRRRR -------",str(e))
+        return jsonify({"message": str(e)}), 500
+    
+@driver.route('/driver/completed', methods=['POST'])
+def completed():
+    data=request.json
+    ambulance_id = data.get('ambulance_id')
+    if not ambulance_id:
+        return jsonify({"error": "Ambulance ID is required"}), 400
+    order = Order.query.filter_by(ambulance_id=ambulance_id, order_status="IN_PROGRESS").first()
+    if not order:
+        return jsonify({"error": "No active order found for this ambulance"}), 404
+    order.order_status = Order_status.COMPLETED
+
+    ambulance = Ambulance.query.get(ambulance_id)
+    if ambulance:
+        ambulance.isAvailable = True
 
     db.session.commit()
-
-    # Return the nearest hospital details and the route information
-    return jsonify({
-        "hospital_name": nearest_hospital.name,
-        "hospital_id": nearest_hospital.id,
-        "route": hospital_route_details["route"],
-        "duration": hospital_route_details["duration"],
-        "distance": hospital_route_details["distance"]
-    }), 200
+    return jsonify({"message": "Order marked as completed successfully"}), 200

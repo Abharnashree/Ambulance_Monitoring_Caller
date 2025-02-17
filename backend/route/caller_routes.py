@@ -67,12 +67,13 @@ def create_booking():
     print("Sent details to caller")
     # Send patient location to the ambulance driver's frontend
     socketio.emit('patient_location', {
+        "ambulance_id":nearest_ambulance.id,
         "latitude": caller_lat,
         "longitude": caller_long,
         "route": route_details['route'],  
         "duration": route_details["duration"],  
         "distance": route_details["distance"] 
-    }, to=f"ambulance-{nearest_ambulance.id}")
+    }, to="ambulance")
 
     route = ST_Segmentize(from_shape(ambulance_caller_route, srid=4326), 0.01) #0.01 degrees = 1.11 kilometers
 
@@ -100,6 +101,7 @@ def create_booking():
     nearest_ambulance.isAvailable = False  # Mark ambulance as unavailable
     db.session.commit()
     current_time = datetime.utcnow()
+    print("AMBULANCE IDDDDDDDDDDDD---------------------",nearest_ambulance.id)
     redis_client.set(f"ambulance:{nearest_ambulance.id}:location", f"{nearest_ambulance.latitude},{nearest_ambulance.longitude}")
     redis_client.set(f"ambulance:{nearest_ambulance.id}:last_update_timestamp", current_time.strftime("%Y-%m-%d %H:%M:%S"))
     return jsonify({
@@ -149,17 +151,7 @@ def find_nearest_ambulance(caller_lat, caller_long):
 
     return nearest_ambulance
 
-@caller.route("/submit_patient_details", methods=["POST"])
-def submit_patient_details():
-    data = request.json
-    
-    if not data:
-        return {"error": "Invalid data"}, 400
-    
-    # Emit data to all connected clients
-    socketio.emit("patient_details", data, room="patients")
-    
-    return {"message": "Patient details submitted successfully."}, 200
+
 
 #This update the screen of the users if any movement is noticed from the driver 
 @caller.route('/ambulance/location/update', methods=['POST'])
@@ -174,8 +166,11 @@ def update_ambulance_location():
 
     data = request.json
     ambulance_id = data.get('ambulance_id')
+    print("AMBULANCEEEEEE IDDDDDDDDDDDDDD-------------------",ambulance_id)
     latitude = data.get('latitude')
     longitude = data.get('longitude')
+    picked_up = data.get('picked_up')
+    hospital_id = data.get('hospital_id')
 
     if not ambulance_id or not latitude or not longitude:
         return jsonify({"message": "ambulance_id, latitude, and longitude are required!"}), 400
@@ -189,9 +184,14 @@ def update_ambulance_location():
     if not order:
         return jsonify({"message": "No active order found for this ambulance!"}), 404
 
+    if picked_up:
+        hospital=Hospital.query.get(hospital_id)
+        lat=hospital.latitude
+        long=hospital.longitude
     # Get caller's location (destination)
-    caller_lat = order.caller_latitude      # caller location needs to be stored in the db, otherwise this wont work
-    caller_long = order.caller_longitude
+    else:
+        lat = order.caller_latitude      # caller location needs to be stored in the db, otherwise this wont work
+        long = order.caller_longitude
 
 # Get last known location and timestamp from Redis
     last_location = redis_client.get(f"ambulance:{ambulance_id}:location")
@@ -244,8 +244,8 @@ def update_ambulance_location():
 
         else:
             print("INSIDE ELSE------------------")
-            print("FROM UPDATE AMBULANCE ",latitude,longitude,caller_lat,caller_long)
-            route_details = get_route_with_directions(latitude, longitude, caller_lat, caller_long)
+            print("FROM UPDATE AMBULANCE ",latitude,longitude,lat,long)
+            route_details = get_route_with_directions(latitude, longitude, lat,long)
             print("FROM UPDATE AMBULANCE-new route", route_details["distance"],route_details["duration"])
             if not route_details:
                 return jsonify({"message": "Unable to fetch route details!"}), 500
@@ -259,6 +259,14 @@ def update_ambulance_location():
                 "latitude":latitude,
                 "longitude":longitude
             }, to=f"caller-{order.caller.phone_no}")
+
+            socketio.emit('ambulance_route_update_driver', {
+                "route": route_details["route"],  
+                "duration": route_details["duration"],
+                "distance": route_details["distance"],
+                "latitude":latitude,
+                "longitude":longitude
+            }, to="ambulance")
 
     
     query = text("""
@@ -316,4 +324,3 @@ def handle_check_connection(data):
         emit('check_connection_response', {'connected': True}, callback=True)
     else:
         emit('check_connection_response', {'connected': False}, callback=True)
-
