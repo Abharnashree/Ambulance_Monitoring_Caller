@@ -29,10 +29,11 @@ def test():
     # order = Order.query.filter_by(ambulance_id=230).first()  #update the order id for your testing
     # print(order.amb_caller_route)
 
-    data = {'order_id' : 3, 'signal_id' : 1, 'timestamp' : 1707815600}
-    socketio.emit('ambulance_signal_update',data, room="dashboard")
-
-    return jsonify("done")
+    # data = {'order_id' : 3, 'signal_id' : 1, 'timestamp' : 1707815600}
+    # socketio.emit('ambulance_signal_update',data, room="dashboard")
+    data = request.json
+    print(data)
+    return jsonify("done"), 200
 
 @admin.route('/add_ambulance', methods=['POST'])
 def add_ambulance():
