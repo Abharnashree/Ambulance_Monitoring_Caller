@@ -44,7 +44,7 @@ export default{
       "favicon": "./assets/favicon.png"
     },
     "extra":{
-      IP: process.env.IP,  
+      IP: 'eee4-2409-40f4-a6-adcf-3d94-8f18-5e69-5bb8.ngrok-free.app/',  
     }
   },
 }

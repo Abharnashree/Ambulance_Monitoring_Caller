@@ -12,6 +12,7 @@ import jwt
 import os
 from dotenv import load_dotenv
 import time
+import logging
 
 driver = Blueprint('driver', __name__)
 gmaps = googlemaps.Client(key='AIzaSyDJfABDdpB7fIMs_F4e1IeqKoEQ2BSNSl0')
@@ -197,6 +198,7 @@ def find_nearest_hospital_and_route():
     try:
         print("HELLO")
         data = request.json
+        print(data)
         ambulance_id = data.get('ambulance_id')
         ambulance_lat = data.get('ambulance_latitude')
         ambulance_long = data.get('ambulance_longitude')
@@ -220,6 +222,7 @@ def find_nearest_hospital_and_route():
             return jsonify({"message": "No route generated to hospital!"}), 400
         
         caller_hospital_route = LineString(polyline.decode(hospital_route_details['route']))
+        print(caller_hospital_route)
 
         route = ST_Segmentize(from_shape(caller_hospital_route, srid=4326), 0.001) #111m
 
@@ -233,8 +236,9 @@ def find_nearest_hospital_and_route():
 
 
         order = Order.query.filter_by(ambulance_id=ambulance_id, order_status="IN_PROGRESS").first()
-        order.traffic_light_intersection = [traffic_light.id for traffic_light in intersection]
+        #traffic_light_intersection = [traffic_light.id for traffic_light in intersection]
         order.caller_hospital_route = from_shape(caller_hospital_route, srid=4326)
+        db.session.commit()
 
         order.traffic_light_intersection_proximity = get_proximity(order.caller_hospital_route, [traffic_light.location for traffic_light in intersection], 0.01)
 

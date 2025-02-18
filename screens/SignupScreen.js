@@ -16,7 +16,7 @@ const SignupScreen = ({ navigation }) => {
 
   const handleSendVerificationCode = async () => {
     try {
-      const response = await axios.post(`http://${IP}:5000/sendOtp`,{
+      const response = await axios.post(`http://${IP}sendOtp`,{
         phoneNumber,
       });
       if (response.data.status === 'OTP sent') {
@@ -34,7 +34,7 @@ const SignupScreen = ({ navigation }) => {
   const handleVerifyVerificationCode = async () => {
     try {
       // Ensure token is available in the response
-      const response = await axios.post(`http://${IP}:5000/verifyOtp`, {
+      const response = await axios.post(`http://${IP}verifyOtp`, {
         verificationCode,
         phoneNumber,
         name,
