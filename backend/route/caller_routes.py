@@ -11,6 +11,7 @@ from shapely.geometry import LineString
 from geoalchemy2.shape import from_shape
 from geoalchemy2.functions import ST_GeomFromText, ST_DWithin, ST_Intersects, ST_Segmentize, ST_Transform, ST_AsText
 import polyline
+import time
 
 
 caller = Blueprint('caller', __name__)
@@ -66,12 +67,13 @@ def create_booking():
     print("Sent details to caller")
     # Send patient location to the ambulance driver's frontend
     socketio.emit('patient_location', {
+        "ambulance_id":nearest_ambulance.id,
         "latitude": caller_lat,
         "longitude": caller_long,
         "route": route_details['route'],  
         "duration": route_details["duration"],  
         "distance": route_details["distance"] 
-    }, to=f"ambulance-{nearest_ambulance.id}")
+    }, to="ambulance")
 
     route = ST_Segmentize(from_shape(ambulance_caller_route, srid=4326), 0.01) #0.01 degrees = 1.11 kilometers
 
@@ -99,6 +101,7 @@ def create_booking():
     nearest_ambulance.isAvailable = False  # Mark ambulance as unavailable
     db.session.commit()
     current_time = datetime.utcnow()
+    print("AMBULANCE IDDDDDDDDDDDD---------------------",nearest_ambulance.id)
     redis_client.set(f"ambulance:{nearest_ambulance.id}:location", f"{nearest_ambulance.latitude},{nearest_ambulance.longitude}")
     redis_client.set(f"ambulance:{nearest_ambulance.id}:last_update_timestamp", current_time.strftime("%Y-%m-%d %H:%M:%S"))
     return jsonify({
@@ -148,17 +151,7 @@ def find_nearest_ambulance(caller_lat, caller_long):
 
     return nearest_ambulance
 
-@caller.route("/submit_patient_details", methods=["POST"])
-def submit_patient_details():
-    data = request.json
-    
-    if not data:
-        return {"error": "Invalid data"}, 400
-    
-    # Emit data to all connected clients
-    socketio.emit("patient_details", data, room="patients")
-    
-    return {"message": "Patient details submitted successfully."}, 200
+
 
 #This update the screen of the users if any movement is noticed from the driver 
 @caller.route('/ambulance/location/update', methods=['POST'])
@@ -173,8 +166,11 @@ def update_ambulance_location():
 
     data = request.json
     ambulance_id = data.get('ambulance_id')
+    print("AMBULANCEEEEEE IDDDDDDDDDDDDDD-------------------",ambulance_id)
     latitude = data.get('latitude')
     longitude = data.get('longitude')
+    picked_up = data.get('picked_up')
+    hospital_id = data.get('hospital_id')
 
     if not ambulance_id or not latitude or not longitude:
         return jsonify({"message": "ambulance_id, latitude, and longitude are required!"}), 400
@@ -188,9 +184,14 @@ def update_ambulance_location():
     if not order:
         return jsonify({"message": "No active order found for this ambulance!"}), 404
 
+    if picked_up:
+        hospital=Hospital.query.get(hospital_id)
+        lat=hospital.latitude
+        long=hospital.longitude
     # Get caller's location (destination)
-    caller_lat = order.caller_latitude      # caller location needs to be stored in the db, otherwise this wont work
-    caller_long = order.caller_longitude
+    else:
+        lat = order.caller_latitude      # caller location needs to be stored in the db, otherwise this wont work
+        long = order.caller_longitude
 
 # Get last known location and timestamp from Redis
     last_location = redis_client.get(f"ambulance:{ambulance_id}:location")
@@ -214,15 +215,37 @@ def update_ambulance_location():
             time_difference = current_time - last_timestamp
             if time_difference > timedelta(minutes=3):  
                 print("IF DIS LESS THAN 0.01 ANDDDDDD TIME GREATER THAN 3 MIN ---------------")
+                query = text("""
+                SELECT t.id FROM public.traffic_light t
+                WHERE ST_DWithin(ST_SetSRID(ST_MakePoint(:lat, :lon), 4326), t.location, 0.001)
+                """)
+                result = db.session.execute(query, {
+                    "lat" : latitude,
+                    "lon" : longitude
+                }).fetchone()
+
+                traffic_id = result[0] if result else None
+
                 socketio.emit('static_ambulance_report', {
+                    "order_id" : order.order_id,
                     "ambulance_id": ambulance_id,
-                    "message": "Ambulance has been static for more than 3 minutes."
+                    "message": "Ambulance has been static for more than 3 minutes.",
+                    "signal_id" : traffic_id,
+                    "timestamp" : time.time()
                 }, to=f"dispatcher-{ambulance_id}")  # It should be sent to control static interface
+
+                socketio.emit('static_ambulance_report', {
+                    "order_id" : order.order_id,
+                    "ambulance_id": ambulance_id,
+                    "message": "Ambulance has been static for more than 3 minutes.",
+                    "signal_id" : traffic_id,
+                    "timestamp" : time.time()
+                }, to="dashboard")  # It should be sent to control static interface
 
         else:
             print("INSIDE ELSE------------------")
-            print("FROM UPDATE AMBULANCE ",latitude,longitude,caller_lat,caller_long)
-            route_details = get_route_with_directions(latitude, longitude, caller_lat, caller_long)
+            print("FROM UPDATE AMBULANCE ",latitude,longitude,lat,long)
+            route_details = get_route_with_directions(latitude, longitude, lat,long)
             print("FROM UPDATE AMBULANCE-new route", route_details["distance"],route_details["duration"])
             if not route_details:
                 return jsonify({"message": "Unable to fetch route details!"}), 500
@@ -236,6 +259,41 @@ def update_ambulance_location():
                 "latitude":latitude,
                 "longitude":longitude
             }, to=f"caller-{order.caller.phone_no}")
+
+            socketio.emit('ambulance_route_update_driver', {
+                "route": route_details["route"],  
+                "duration": route_details["duration"],
+                "distance": route_details["distance"],
+                "latitude":latitude,
+                "longitude":longitude
+            }, to="ambulance")
+
+    
+    query = text("""
+        SELECT t.id FROM public.traffic_light t
+        WHERE ST_DWithin(ST_SetSRID(ST_MakePoint(:lat, :lon), 4326), t.location, 0.0001)
+    """)
+    result = db.session.execute(query, {
+        "lat" : latitude,
+        "lon" : longitude
+    }).fetchone()
+
+    traffic_id = result[0] if result else None
+
+    if traffic_id is not None:
+        socketio.emit('ambulance_signal_crossed', {"order_id" : order.order_id, "signal_id" : traffic_id}, room="dashboard")
+
+    intersecting_traffic_lights = check_proximity(latitude, longitude, order.order_id)
+    print(intersecting_traffic_lights)
+    
+    if(len(intersecting_traffic_lights) > 0):
+        print(intersecting_traffic_lights)
+        
+        for traffic_light in intersecting_traffic_lights:
+            timestamp = time.time() + traffic_light.get("distance_meters")/(40*1000/(60*60)) #40kmph
+            update = {"order_id" : order.order_id, "signal_id" : traffic_light.get("id"), "timestamp": timestamp }
+            socketio.emit("ambulance_signal_update", update, room="dashboard")
+
 
     # Cache the updated location in Redis
     redis_client.set(f"ambulance:{ambulance_id}:location", f"{latitude},{longitude}")
@@ -266,4 +324,3 @@ def handle_check_connection(data):
         emit('check_connection_response', {'connected': True}, callback=True)
     else:
         emit('check_connection_response', {'connected': False}, callback=True)
-

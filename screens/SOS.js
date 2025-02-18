@@ -13,7 +13,7 @@ const SOS = ({ navigation }) => {
   const [location, setLocation] = useState(null);
   const [driverDetails, setDriverDetails] = useState(null); // State to store driver details
   const [phoneNumber, setPhoneNumber] = useState(null);
-  const socket = io(`http://${IP}:5000`, { transports: ['websocket'] });
+  const socket = io(`http://${IP}`, { transports: ['websocket'] });
 
   // Effect hook to handle socket connection and disconnection
   useEffect(() => {
@@ -91,7 +91,7 @@ const SOS = ({ navigation }) => {
       setLocation(currlocation.coords);
       //console.log("Current location BEFORE API response:", currlocation);
 
-      const response = await axios.post(`http://${IP}:5000/caller/booking`, { 
+      const response = await axios.post(`http://${IP}caller/booking`, { 
         //use ipconfig and use your own ipv4 address for wifi
         caller_phone_no: phoneNumber, // how to use the o
         latitude: currlocation.coords.latitude,

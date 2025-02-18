@@ -60,13 +60,21 @@ def haversine_distance(lat1, lon1, lat2, lon2):
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     return R * c
 
-def get_proximity(linestring, points, buffer_distance=0.01):
+def get_proximity(linestring, points, buffer_distance=750):
+    print("\nget_proximity: \n")
+    print("linestring", type(linestring.data))  # Should be <class 'bytes'>
+    print("LineString", linestring)
+    print("Points", points)
 
-    query = text("""
+    base_query = """
         WITH input AS (
             SELECT ST_SetSRID(ST_GeomFromEWKB(:linestring), 4326) AS line
-        ),
-        points AS (
+        )
+    """
+
+    if points:  # Only include points-related logic if points exist
+        base_query += """
+        , points AS (
             SELECT ST_SetSRID(ST_GeomFromEWKB(unnest(array[:points_list])), 4326) AS pt
         ),
         segments AS (
@@ -77,16 +85,23 @@ def get_proximity(linestring, points, buffer_distance=0.01):
                 ) AS segment
             FROM input, points
         )
-        SELECT ST_SetSRID(ST_Collect(segment), 4326) AS multilinestring FROM segments;
-    """)
+        SELECT ST_Collect(segment) AS multilinestring FROM segments;
+        """
+    else:  # No points case, return NULL or empty geometry
+        base_query += """
+        SELECT NULL::geometry AS multilinestring;
+        """
 
-    result = db.session.execute(query, {
-        "linestring": linestring.data,  # Directly use the WKBElement
-        "points_list": [point.data for point in points],    # Pass the list of WKBElement points
-        "buffer_distance": buffer_distance
-    }).scalar()
+    print("The query is complete")
 
-    return result  # Returns MultiLineString (WKBElement)
+    params = {"linestring": bytes(linestring.data), "buffer_distance": buffer_distance}
+
+    if points:
+        params["points_list"] = [bytes(point.data) for point in points]
+
+    result = db.session.execute(text(base_query), params).scalar()
+
+    return result  # Returns MultiLineString (WKBElement) or NULL if no points exist
 
 
 def check_proximity(lat, lon, order_id):
