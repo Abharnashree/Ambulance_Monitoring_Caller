@@ -1,16 +1,16 @@
-import React, { useEffect } from 'react';
-import { View, StyleSheet, Image } from 'react-native';
-import { Text } from 'react-native-paper';
+import React, { useEffect, useRef } from 'react';
+import { View, StyleSheet, Image, Animated, Easing} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SplashScreen = ({ navigation }) => {
   useEffect(() => {
     const timer = setTimeout(() => {
       handleGetToken();
-    }, 2000);
+    }, 4000);
 
     return () => clearTimeout(timer); // Cleanup timeout
-  }, []);
+  }, 
+  []);
 
   const handleGetToken = async () => {
     try {
@@ -23,14 +23,52 @@ const SplashScreen = ({ navigation }) => {
     }
   };
 
+  const fadeAnim = useRef(new Animated.Value(0)).current; 
+  const ambulanceAnim = useRef(new Animated.Value(-500)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current; 
+
+  useEffect(() => {
+    Animated.sequence([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 1000, 
+        easing: Easing.ease, 
+        useNativeDriver: true,
+      }),
+      Animated.timing(ambulanceAnim, {
+        toValue: 0,
+        duration: 1500, 
+        easing: Easing.out(Easing.quad), 
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [fadeAnim, ambulanceAnim]);
+
   return (
     <View style={styles.container}>
-      <Image
-        source={require('../assets/logo.png')}
-        style={styles.image}
+      <Animated.Image
+        source={require('../assets/Ambulance.png')}
+        style={[
+          styles.ambulance,
+          {
+            opacity: fadeAnim,
+            transform: [
+              { translateX: ambulanceAnim },
+              { scale: scaleAnim },
+            ],
+          },
+        ]}
         resizeMode="contain"
       />
-      <Text style={styles.title}>Ambulance Monitoring</Text>
+     
+      <Image
+        source={require('../assets/Blank logo.png')} 
+        style={styles.logo}
+        resizeMode="contain"
+      />
+      <Animated.Text style={[styles.title, { opacity: fadeAnim }]}>
+        ResQLink
+      </Animated.Text>
     </View>
   );
 };
@@ -41,16 +79,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 20,
+    backgroundColor: '#f8f8f8', 
   },
-  image: {
-    width: 350,
-    height: 300,
-    marginBottom: 20,
+  ambulance: {
+    width: 350,  
+    height: 250,
+    marginBottom: 0, 
+  },
+  logo: {
+    width: 250,
+    height: 250,
+    marginTop: -250,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#00008b',
+    fontSize: 36,
+    fontWeight: '700', 
+    color: '#2a2a72', 
+    letterSpacing: 2, 
     marginTop: 20,
   },
 });

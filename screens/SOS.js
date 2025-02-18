@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, Alert } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Alert,Animated, Easing } from 'react-native';
 import { io } from 'socket.io-client';
 import * as Location from 'expo-location';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
+
 const IP = Constants.expoConfig.extra.IP;
 console.log("IP ADDRESS",IP);
 
@@ -122,23 +123,43 @@ const SOS = ({ navigation }) => {
     
   };
 
-  return (
-    <>
-      
+  const [scale] = useState(new Animated.Value(1));
 
-      <View style={styles.btn_container}>
-        <TouchableOpacity onPress={getLocationAndTriggerSOS} style={styles.btn}>
+  useEffect(() => {
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(scale, {
+          toValue: 1.1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scale, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    pulse.start();
+  }, [scale]);
+
+  return (
+    <View style={styles.btn_container}>
+      <TouchableOpacity onPress={getLocationAndTriggerSOS} style={styles.btn}>
+        <Animated.View style={[styles.logoContainer, { transform: [{ scale }] }]}>
+          <View style={styles.bgTint} />
           <Image
             source={require('../assets/SOS_symbol.png')}
             style={styles.sos}
             resizeMode="contain"
           />
-        </TouchableOpacity>
-        <Text style={styles.description}>
-          Press the SOS button to send an immediate distress signal. An ambulance will be dispatched to your location to provide assistance as quickly as possible.
-        </Text>
-      </View>
-    </>
+        </Animated.View>
+      </TouchableOpacity>
+      <Text style={styles.description}>
+        Press the SOS button to send an immediate distress signal. An ambulance will be dispatched to your location to provide assistance as quickly as possible.
+      </Text>
+    </View>
   );
 };
 
@@ -148,38 +169,45 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 16,
-  },
   btn: {
     borderRadius: 50,
     overflow: 'hidden',
     alignItems: 'center',
   },
+  logoContainer: {
+    position: 'relative',
+    width: 300,
+    height: 300,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bgTint: {
+    position: 'absolute',
+
+    width:220,
+    height:220,
+
+    backgroundColor: 'rgba(237, 176, 165, 0.3)',
+    borderRadius: 150, 
+    zIndex: 1,
+  },
   sos: {
     width: 300,
     height: 300,
+    tintColor: 'red',
+    zIndex: 2, 
+    shadowColor: '#FF6347', 
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.6,
+    shadowRadius: 10,
   },
   description: {
     marginTop: 20,
-    fontSize: 16,
+    fontSize: 13,
     textAlign: 'center',
     paddingHorizontal: 20,
     color: 'rgb(179, 176, 179)',
   },
-  image: {
-    width: 200,
-    height: 200,
-    top: 30,
-  },
-  img_container: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingBottom: 100,
-  },
 });
 
 export default SOS;
-
