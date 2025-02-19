@@ -124,7 +124,8 @@ def check_proximity(lat, lon, order_id):
         ),
         line_segments AS (
             -- Extract each LineString from the MultiLineString
-            SELECT ST_GeometryN(traffic_light_intersection_proximity, generate_series(1, ST_NumGeometries(traffic_light_intersection_proximity))) AS segment
+            SELECT ST_GeometryN(traffic_light_intersection_proximity, 
+            generate_series(1, ST_NumGeometries(traffic_light_intersection_proximity))) AS segment
             FROM order_multilines
         ),
         intersecting_segments AS (

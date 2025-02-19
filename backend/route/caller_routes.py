@@ -185,9 +185,11 @@ def update_ambulance_location():
         return jsonify({"message": "No active order found for this ambulance!"}), 404
 
     if picked_up:
+        print()
         hospital=Hospital.query.get(hospital_id)
         lat=hospital.latitude
         long=hospital.longitude
+        print("hospital location",lat,long)
     # Get caller's location (destination)
     else:
         lat = order.caller_latitude      # caller location needs to be stored in the db, otherwise this wont work

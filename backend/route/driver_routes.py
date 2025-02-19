@@ -233,19 +233,13 @@ def find_nearest_hospital_and_route():
                 10 # within 10 meters
             )
         ).all()
-
-
         order = Order.query.filter_by(ambulance_id=ambulance_id, order_status="IN_PROGRESS").first()
         #traffic_light_intersection = [traffic_light.id for traffic_light in intersection]
         order.caller_hospital_route = from_shape(caller_hospital_route, srid=4326)
         db.session.commit()
-
         order.traffic_light_intersection_proximity = get_proximity(order.caller_hospital_route, [traffic_light.location for traffic_light in intersection], 0.01)
-
         db.session.commit()
-
         socketio.emit('PICKED_UP', to=f"caller-{order.caller.phone_no}")
-
         # Return the nearest hospital details and the route information
         return jsonify({
             "hospital_name": nearest_hospital.name,
